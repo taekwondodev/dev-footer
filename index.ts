@@ -1,6 +1,6 @@
 // dev-footer: everything below the editor and the transcript rows for dev's background
 // work. The subagent list is a below-editor widget fed by dev's `dev/work-view` event; the
-// HUD replaces Pi's footer; the `work` and `dev/work-outcome` renderers read `details`.
+// HUD replaces Pi's footer; the `work`, `dev/work-outcome` and workspace renderers read `details`.
 //
 // Pi renders on every frame, so render() does no I/O: the list draws the latest view,
 // the HUD draws repository facts read in the background after each turn (one read at a
@@ -18,6 +18,7 @@ import { outcomeRenderer, workRenderers } from './lib/rows.ts'
 import { onSessionRead } from './lib/session.ts'
 import { cacheRemaining, type SessionStats, sessionStats } from './lib/stats.ts'
 import { asWorkView, WORK_VIEW_EVENT, type WorkView } from './lib/view.ts'
+import { handoffRenderer, receiptEntryRenderer, workspaceMessageRenderer } from './lib/workspace-rows.ts'
 
 export const LIST_WIDGET = 'dev-footer/subagents'
 const PULL_REQUEST_TTL_MS = 60_000
@@ -79,6 +80,9 @@ export default function (pi: ExtensionAPI): void {
   onSessionRead(() => (requestListRender ?? requestFooterRender)?.())
   pi.registerToolRenderer((toolName, next) => (toolName === 'work' ? workRenderers() : next()))
   pi.registerMessageRenderer('dev/work-outcome', outcomeRenderer)
+  pi.registerMessageRenderer('dev/workspace', workspaceMessageRenderer)
+  pi.registerMessageRenderer('dev/workspace-handoff', handoffRenderer)
+  pi.registerEntryRenderer('dev/workspace-receipt', receiptEntryRenderer)
 
   // The default branch and detached heads have no pull request worth a network call.
   const refreshPullRequest = (cwd: string): void => {
