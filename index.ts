@@ -1,7 +1,6 @@
 // dev-footer: everything below the editor and the transcript rows for dev's background
 // work. The subagent list is a below-editor widget fed by dev's `dev/work-view` event; the
 // HUD replaces Pi's footer; the `work` and `dev/work-outcome` renderers read `details`.
-// EXPECTED-BEHAVIOR.md states the contract; check.mjs verifies it.
 //
 // Pi renders on every frame, so render() does no I/O: the list draws the latest view,
 // the HUD draws repository facts read in the background after each turn (one read at a
