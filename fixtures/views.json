@@ -1,0 +1,463 @@
+{
+  "running": {
+    "at": 1794129349805,
+    "view": {
+      "sessionId": "01a1ba6f-36a5-76a3-8009-4847dc98e4d7",
+      "children": [
+        {
+          "id": "dddeab1c-a014-4d2b-b6f8-fb4d0baf8815",
+          "taskId": "281-arena-snapshot",
+          "status": "running",
+          "skill": "architect",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "claude-bridge/claude-sonnet-5-5",
+          "effort": "medium",
+          "context": {
+            "tokens": 53351,
+            "contextWindow": 200000,
+            "percent": 26.675500000000003
+          },
+          "startedAt": 1794129336062,
+          "turns": 3,
+          "activity": {
+            "kind": "tool",
+            "name": "read",
+            "target": "src/work-controller.ts"
+          }
+        },
+        {
+          "id": "12cf4667-3cee-4f72-998a-fe93858b8177",
+          "taskId": "281-arena-stream",
+          "status": "running",
+          "skill": "architect",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "claude-bridge/claude-sonnet-5-5",
+          "effort": "medium",
+          "context": {
+            "tokens": 44277,
+            "contextWindow": 200000,
+            "percent": 22.1385
+          },
+          "startedAt": 1794129336148,
+          "turns": 3,
+          "activity": {
+            "kind": "writing"
+          }
+        }
+      ],
+      "commands": {
+        "running": 0
+      },
+      "blocks": {
+        "agentsBlocked": false,
+        "reactivationSuspended": false
+      }
+    }
+  },
+  "one-finished": {
+    "at": 1794129593339,
+    "view": {
+      "sessionId": "01a1ba6f-36a5-76a3-8009-4847dc98e4d7",
+      "children": [
+        {
+          "id": "dddeab1c-a014-4d2b-b6f8-fb4d0baf8815",
+          "taskId": "281-arena-snapshot",
+          "status": "completed",
+          "skill": "architect",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "claude-bridge/claude-sonnet-5-5",
+          "effort": "medium",
+          "context": {
+            "tokens": 106237,
+            "contextWindow": 200000,
+            "percent": 53.118500000000004
+          },
+          "startedAt": 1794129336062,
+          "completedAt": 1794129592339,
+          "turns": 11
+        },
+        {
+          "id": "12cf4667-3cee-4f72-998a-fe93858b8177",
+          "taskId": "281-arena-stream",
+          "status": "running",
+          "skill": "architect",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "claude-bridge/claude-sonnet-5-5",
+          "effort": "medium",
+          "context": {
+            "tokens": 92019,
+            "contextWindow": 200000,
+            "percent": 46.009499999999996
+          },
+          "startedAt": 1794129336148,
+          "turns": 10,
+          "activity": {
+            "kind": "thinking"
+          }
+        }
+      ],
+      "commands": {
+        "running": 0
+      },
+      "blocks": {
+        "agentsBlocked": false,
+        "reactivationSuspended": false
+      }
+    }
+  },
+  "finished": {
+    "at": 1794129621746,
+    "view": {
+      "sessionId": "01a1ba6f-36a5-76a3-8009-4847dc98e4d7",
+      "children": [
+        {
+          "id": "dddeab1c-a014-4d2b-b6f8-fb4d0baf8815",
+          "taskId": "281-arena-snapshot",
+          "status": "completed",
+          "skill": "architect",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "claude-bridge/claude-sonnet-5-5",
+          "effort": "medium",
+          "context": {
+            "tokens": 106237,
+            "contextWindow": 200000,
+            "percent": 53.118500000000004
+          },
+          "startedAt": 1794129336062,
+          "completedAt": 1794129592339,
+          "turns": 11
+        },
+        {
+          "id": "12cf4667-3cee-4f72-998a-fe93858b8177",
+          "taskId": "281-arena-stream",
+          "status": "completed",
+          "skill": "architect",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "claude-bridge/claude-sonnet-5-5",
+          "effort": "medium",
+          "context": {
+            "tokens": 106867,
+            "contextWindow": 200000,
+            "percent": 53.4335
+          },
+          "startedAt": 1794129336148,
+          "completedAt": 1794129620746,
+          "turns": 11
+        }
+      ],
+      "commands": {
+        "running": 0
+      },
+      "blocks": {
+        "agentsBlocked": false,
+        "reactivationSuspended": false
+      }
+    }
+  },
+  "blocked": {
+    "at": 1794129349805,
+    "view": {
+      "sessionId": "01a1ba6f-36a5-76a3-8009-4847dc98e4d7",
+      "children": [
+        {
+          "id": "dddeab1c-a014-4d2b-b6f8-fb4d0baf8815",
+          "taskId": "281-arena-snapshot",
+          "status": "running",
+          "skill": "architect",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "claude-bridge/claude-sonnet-5-5",
+          "effort": "medium",
+          "context": {
+            "tokens": 53351,
+            "contextWindow": 200000,
+            "percent": 26.675500000000003
+          },
+          "startedAt": 1794129336062,
+          "turns": 3,
+          "activity": {
+            "kind": "tool",
+            "name": "read",
+            "target": "src/work-controller.ts"
+          }
+        },
+        {
+          "id": "12cf4667-3cee-4f72-998a-fe93858b8177",
+          "taskId": "281-arena-stream",
+          "status": "running",
+          "skill": "architect",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "claude-bridge/claude-sonnet-5-5",
+          "effort": "medium",
+          "context": {
+            "tokens": 44277,
+            "contextWindow": 200000,
+            "percent": 22.1385
+          },
+          "startedAt": 1794129336148,
+          "turns": 3,
+          "activity": {
+            "kind": "writing"
+          }
+        }
+      ],
+      "commands": {
+        "running": 1
+      },
+      "blocks": {
+        "agentsBlocked": true,
+        "reactivationSuspended": true
+      }
+    }
+  },
+  "coordinator": {
+    "at": 1794129352471,
+    "view": {
+      "sessionId": "01a1ba6f-36a5-76a3-8009-4847dc98e4d7",
+      "children": [
+        {
+          "id": "dddeab1c-a014-4d2b-b6f8-fb4d0baf8815",
+          "taskId": "281-arena-snapshot",
+          "status": "running",
+          "skill": "architect",
+          "coordinator": true,
+          "access": "read-only",
+          "model": "claude-bridge/claude-sonnet-5-5",
+          "effort": "medium",
+          "context": {
+            "tokens": 59146,
+            "contextWindow": 200000,
+            "percent": 29.573
+          },
+          "startedAt": 1794129336062,
+          "turns": 4,
+          "activity": {
+            "kind": "tool",
+            "name": "grep",
+            "target": "onChange|case 'progress'|'progress'|type === 'ready'|summarize|toSummary|outcomeOf|const snapshot|AttemptSummary|commitC"
+          }
+        },
+        {
+          "id": "12cf4667-3cee-4f72-998a-fe93858b8177",
+          "taskId": "281-arena-stream",
+          "parent": "dddeab1c-a014-4d2b-b6f8-fb4d0baf8815",
+          "status": "running",
+          "skill": "architect",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "claude-bridge/claude-sonnet-5-5",
+          "effort": "medium",
+          "context": {
+            "tokens": 48646,
+            "contextWindow": 200000,
+            "percent": 24.323
+          },
+          "startedAt": 1794129336148,
+          "turns": 4,
+          "activity": {
+            "kind": "thinking"
+          }
+        }
+      ],
+      "commands": {
+        "running": 0
+      },
+      "blocks": {
+        "agentsBlocked": false,
+        "reactivationSuspended": false
+      }
+    }
+  },
+  "many": {
+    "at": 1794129593339,
+    "view": {
+      "sessionId": "01a1ba6f-36a5-76a3-8009-4847dc98e4d7",
+      "children": [
+        {
+          "id": "dddeab1c-a014-4d2b-b6f8-fb4d0baf0000",
+          "taskId": "281-arena-snapshot-0",
+          "status": "completed",
+          "skill": "architect",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "claude-bridge/claude-sonnet-5-5",
+          "effort": "medium",
+          "context": {
+            "tokens": 106237,
+            "contextWindow": 200000,
+            "percent": 53.118500000000004
+          },
+          "startedAt": 1794129336062,
+          "completedAt": 1794129592339,
+          "turns": 11
+        },
+        {
+          "id": "dddeab1c-a014-4d2b-b6f8-fb4d0baf8815",
+          "taskId": "281-arena-snapshot",
+          "status": "completed",
+          "skill": "architect",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "claude-bridge/claude-sonnet-5-5",
+          "effort": "medium",
+          "context": {
+            "tokens": 106237,
+            "contextWindow": 200000,
+            "percent": 53.118500000000004
+          },
+          "startedAt": 1794129336062,
+          "completedAt": 1794129592339,
+          "turns": 11
+        },
+        {
+          "id": "12cf4667-3cee-4f72-998a-fe93858b8177",
+          "taskId": "281-arena-stream",
+          "status": "running",
+          "skill": "architect",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "claude-bridge/claude-sonnet-5-5",
+          "effort": "medium",
+          "context": {
+            "tokens": 92019,
+            "contextWindow": 200000,
+            "percent": 46.009499999999996
+          },
+          "startedAt": 1794129336148,
+          "turns": 10,
+          "activity": {
+            "kind": "thinking"
+          }
+        },
+        {
+          "id": "12cf4667-3cee-4f72-998a-fe93858b0001",
+          "taskId": "281-arena-stream-1",
+          "status": "running",
+          "skill": "architect",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "claude-bridge/claude-sonnet-5-5",
+          "effort": "medium",
+          "context": {
+            "tokens": 92019,
+            "contextWindow": 200000,
+            "percent": 46.009499999999996
+          },
+          "startedAt": 1794129337148,
+          "turns": 10,
+          "activity": {
+            "kind": "thinking"
+          }
+        },
+        {
+          "id": "dddeab1c-a014-4d2b-b6f8-fb4d0baf0002",
+          "taskId": "281-arena-snapshot-2",
+          "status": "completed",
+          "skill": "architect",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "claude-bridge/claude-sonnet-5-5",
+          "effort": "medium",
+          "context": {
+            "tokens": 106237,
+            "contextWindow": 200000,
+            "percent": 53.118500000000004
+          },
+          "startedAt": 1794129338062,
+          "completedAt": 1794129592339,
+          "turns": 11
+        },
+        {
+          "id": "12cf4667-3cee-4f72-998a-fe93858b0003",
+          "taskId": "281-arena-stream-3",
+          "status": "running",
+          "skill": "architect",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "claude-bridge/claude-sonnet-5-5",
+          "effort": "medium",
+          "context": {
+            "tokens": 92019,
+            "contextWindow": 200000,
+            "percent": 46.009499999999996
+          },
+          "startedAt": 1794129339148,
+          "turns": 10,
+          "activity": {
+            "kind": "thinking"
+          }
+        },
+        {
+          "id": "dddeab1c-a014-4d2b-b6f8-fb4d0baf0004",
+          "taskId": "281-arena-snapshot-4",
+          "status": "completed",
+          "skill": "architect",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "claude-bridge/claude-sonnet-5-5",
+          "effort": "medium",
+          "context": {
+            "tokens": 106237,
+            "contextWindow": 200000,
+            "percent": 53.118500000000004
+          },
+          "startedAt": 1794129340062,
+          "completedAt": 1794129592339,
+          "turns": 11
+        },
+        {
+          "id": "12cf4667-3cee-4f72-998a-fe93858b0005",
+          "taskId": "281-arena-stream-5",
+          "status": "running",
+          "skill": "architect",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "claude-bridge/claude-sonnet-5-5",
+          "effort": "medium",
+          "context": {
+            "tokens": 92019,
+            "contextWindow": 200000,
+            "percent": 46.009499999999996
+          },
+          "startedAt": 1794129341148,
+          "turns": 10,
+          "activity": {
+            "kind": "thinking"
+          }
+        },
+        {
+          "id": "dddeab1c-a014-4d2b-b6f8-fb4d0baf0006",
+          "taskId": "281-arena-snapshot-6",
+          "status": "completed",
+          "skill": "architect",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "claude-bridge/claude-sonnet-5-5",
+          "effort": "medium",
+          "context": {
+            "tokens": 106237,
+            "contextWindow": 200000,
+            "percent": 53.118500000000004
+          },
+          "startedAt": 1794129342062,
+          "completedAt": 1794129592339,
+          "turns": 11
+        }
+      ],
+      "commands": {
+        "running": 0
+      },
+      "blocks": {
+        "agentsBlocked": false,
+        "reactivationSuspended": false
+      }
+    }
+  }
+}

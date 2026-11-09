@@ -1,0 +1,582 @@
+{
+  "results": [
+    {
+      "type": "tool_result",
+      "toolName": "work",
+      "toolCallId": "broken",
+      "input": {
+        "action": "delegate",
+        "taskId": "broken-child",
+        "prompt": "Fail.\nSCRIPT [{\"error\":\"400 invalid request: malformed tool schema\"}]",
+        "model": "work-child-offline/work-child"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"id\":\"0da24e25-ca0d-4973-a0fa-f5cc49f8bcc8\",\"taskId\":\"broken-child\",\"kind\":\"agent\",\"status\":\"running\"}"
+        }
+      ],
+      "details": {
+        "kind": "attempt",
+        "attempt": {
+          "id": "0da24e25-ca0d-4973-a0fa-f5cc49f8bcc8",
+          "taskId": "broken-child",
+          "workflowTaskId": "fcdfc56e-d472-4923-95fb-6f5c0c735203",
+          "workspaceId": "33e5e370-4bed-4157-89a7-30537d2f816f",
+          "cwd": "/private/var/folders/bh/xn2xmnl57md2whlcgb5916300000gq/T/dev-dev-footer-fixtures-W19Qcl/repository",
+          "kind": "agent",
+          "status": "running",
+          "access": "read-only",
+          "requested": {
+            "model": "work-child-offline/work-child"
+          }
+        }
+      },
+      "structuredContent": {
+        "kind": "attempt",
+        "attempt": {
+          "id": "0da24e25-ca0d-4973-a0fa-f5cc49f8bcc8",
+          "taskId": "broken-child",
+          "workflowTaskId": "fcdfc56e-d472-4923-95fb-6f5c0c735203",
+          "workspaceId": "33e5e370-4bed-4157-89a7-30537d2f816f",
+          "cwd": "/private/var/folders/bh/xn2xmnl57md2whlcgb5916300000gq/T/dev-dev-footer-fixtures-W19Qcl/repository",
+          "kind": "agent",
+          "status": "running",
+          "access": "read-only",
+          "requested": {
+            "model": "work-child-offline/work-child"
+          }
+        }
+      },
+      "isError": false
+    },
+    {
+      "type": "tool_result",
+      "toolName": "work",
+      "toolCallId": "look",
+      "input": {
+        "action": "delegate",
+        "taskId": "look-around",
+        "prompt": "Look around the repository.\nUSAGE {\"input\":21000,\"output\":900}\nSCRIPT [[{\"type\":\"toolCall\",\"id\":\"r1\",\"name\":\"read\",\"arguments\":{\"path\":\"tracked.txt\"}},{\"type\":\"toolCall\",\"id\":\"g1\",\"name\":\"grep\",\"arguments\":{\"pattern\":\"committed\",\"path\":\".\"}}],[{\"type\":\"toolCall\",\"id\":\"l1\",\"name\":\"ls\",\"arguments\":{\"path\":\".\"}}],{\"delayMs\":300,\"content\":[{\"type\":\"text\",\"text\":\"```json\\n{\\n  \\\"format\\\": \\\"evidence/1\\\",\\n  \\\"status\\\": \\\"complete\\\",\\n  \\\"findings\\\": [\\n    {\\n      \\\"claim\\\": \\\"one\\\"\\n    },\\n    {\\n      \\\"claim\\\": \\\"two\\\"\\n    },\\n    {\\n      \\\"claim\\\": \\\"three\\\"\\n    }\\n  ],\\n  \\\"limits\\\": [\\n    \\\"offline model\\\"\\n  ]\\n}\\n```\\nThe tracked file holds the committed fixture text.\"}]}]",
+        "model": "work-child-offline/work-child"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"id\":\"a0a242be-f386-4458-8746-94b7ad9764a4\",\"taskId\":\"look-around\",\"kind\":\"agent\",\"status\":\"running\"}"
+        }
+      ],
+      "details": {
+        "kind": "attempt",
+        "attempt": {
+          "id": "a0a242be-f386-4458-8746-94b7ad9764a4",
+          "taskId": "look-around",
+          "workflowTaskId": "fcdfc56e-d472-4923-95fb-6f5c0c735203",
+          "workspaceId": "33e5e370-4bed-4157-89a7-30537d2f816f",
+          "cwd": "/private/var/folders/bh/xn2xmnl57md2whlcgb5916300000gq/T/dev-dev-footer-fixtures-W19Qcl/repository",
+          "kind": "agent",
+          "status": "running",
+          "access": "read-only",
+          "requested": {
+            "model": "work-child-offline/work-child"
+          }
+        }
+      },
+      "structuredContent": {
+        "kind": "attempt",
+        "attempt": {
+          "id": "a0a242be-f386-4458-8746-94b7ad9764a4",
+          "taskId": "look-around",
+          "workflowTaskId": "fcdfc56e-d472-4923-95fb-6f5c0c735203",
+          "workspaceId": "33e5e370-4bed-4157-89a7-30537d2f816f",
+          "cwd": "/private/var/folders/bh/xn2xmnl57md2whlcgb5916300000gq/T/dev-dev-footer-fixtures-W19Qcl/repository",
+          "kind": "agent",
+          "status": "running",
+          "access": "read-only",
+          "requested": {
+            "model": "work-child-offline/work-child"
+          }
+        }
+      },
+      "isError": false
+    },
+    {
+      "type": "tool_result",
+      "toolName": "work",
+      "toolCallId": "check",
+      "input": {
+        "action": "process",
+        "taskId": "npm-check",
+        "command": "printf 'lint ok\\nformat ok\\n'"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"id\":\"6b17ba0b-fa21-4f9e-bd73-039ddf277aa2\",\"taskId\":\"npm-check\",\"kind\":\"process\",\"status\":\"running\"}"
+        }
+      ],
+      "details": {
+        "kind": "attempt",
+        "attempt": {
+          "id": "6b17ba0b-fa21-4f9e-bd73-039ddf277aa2",
+          "taskId": "npm-check",
+          "workflowTaskId": "fcdfc56e-d472-4923-95fb-6f5c0c735203",
+          "workspaceId": "33e5e370-4bed-4157-89a7-30537d2f816f",
+          "cwd": "/private/var/folders/bh/xn2xmnl57md2whlcgb5916300000gq/T/dev-dev-footer-fixtures-W19Qcl/repository",
+          "kind": "process",
+          "status": "running"
+        }
+      },
+      "structuredContent": {
+        "kind": "attempt",
+        "attempt": {
+          "id": "6b17ba0b-fa21-4f9e-bd73-039ddf277aa2",
+          "taskId": "npm-check",
+          "workflowTaskId": "fcdfc56e-d472-4923-95fb-6f5c0c735203",
+          "workspaceId": "33e5e370-4bed-4157-89a7-30537d2f816f",
+          "cwd": "/private/var/folders/bh/xn2xmnl57md2whlcgb5916300000gq/T/dev-dev-footer-fixtures-W19Qcl/repository",
+          "kind": "process",
+          "status": "running"
+        }
+      },
+      "isError": false
+    }
+  ],
+  "outcomes": [
+    {
+      "role": "custom",
+      "customType": "dev/work-outcome",
+      "content": "Work outcomes: producer observations, not verification. Read a result from offset 0 when it is not included. Honor dev-cycle checkpoints; report worktrees.\n[{\"id\":\"6b17ba0b-fa21-4f9e-bd73-039ddf277aa2\",\"taskId\":\"npm-check\",\"kind\":\"process\",\"status\":\"completed\",\"exitCode\":0,\"stdout\":\"lint ok\\nformat ok\\n\"}]",
+      "display": true,
+      "details": {
+        "attempts": [
+          "6b17ba0b-fa21-4f9e-bd73-039ddf277aa2"
+        ],
+        "children": [
+          {
+            "id": "6b17ba0b-fa21-4f9e-bd73-039ddf277aa2",
+            "kind": "process",
+            "startedAt": 1794149546242,
+            "completedAt": 1794149546292
+          }
+        ],
+        "outcomes": [
+          {
+            "id": "6b17ba0b-fa21-4f9e-bd73-039ddf277aa2",
+            "taskId": "npm-check",
+            "workflowTaskId": "fcdfc56e-d472-4923-95fb-6f5c0c735203",
+            "workspaceId": "33e5e370-4bed-4157-89a7-30537d2f816f",
+            "cwd": "/private/var/folders/bh/xn2xmnl57md2whlcgb5916300000gq/T/dev-dev-footer-fixtures-W19Qcl/repository",
+            "kind": "process",
+            "status": "completed",
+            "exitCode": 0,
+            "completedAt": 1794149546292,
+            "staleArtifact": false,
+            "logs": [
+              {
+                "stream": "stdout",
+                "available": true,
+                "text": "lint ok\nformat ok\n",
+                "truncated": false,
+                "nextOffset": null
+              },
+              {
+                "stream": "stderr",
+                "available": true,
+                "text": "",
+                "truncated": false,
+                "nextOffset": null
+              }
+            ]
+          }
+        ]
+      },
+      "timestamp": 0
+    },
+    {
+      "role": "custom",
+      "customType": "dev/work-outcome",
+      "content": "Work outcomes: producer observations, not verification. Read a result from offset 0 when it is not included. Honor dev-cycle checkpoints; report worktrees.\n[{\"id\":\"0da24e25-ca0d-4973-a0fa-f5cc49f8bcc8\",\"taskId\":\"broken-child\",\"kind\":\"agent\",\"status\":\"failed\",\"exitCode\":1,\"error\":\"400 invalid request: malformed tool schema\"}]",
+      "display": true,
+      "details": {
+        "attempts": [
+          "0da24e25-ca0d-4973-a0fa-f5cc49f8bcc8"
+        ],
+        "children": [
+          {
+            "id": "0da24e25-ca0d-4973-a0fa-f5cc49f8bcc8",
+            "kind": "agent",
+            "sessionFile": "/private/var/folders/bh/xn2xmnl57md2whlcgb5916300000gq/T/dev-dev-footer-fixtures-W19Qcl/runtime/child-sessions/2026-11-08T14-52-27-033Z_01a1bba5-7c19-754b-8bd7-03d5cbdc15b0.jsonl",
+            "effort": "off",
+            "startedAt": 1794149546203,
+            "completedAt": 1794149547136
+          }
+        ],
+        "outcomes": [
+          {
+            "id": "0da24e25-ca0d-4973-a0fa-f5cc49f8bcc8",
+            "taskId": "broken-child",
+            "workflowTaskId": "fcdfc56e-d472-4923-95fb-6f5c0c735203",
+            "workspaceId": "33e5e370-4bed-4157-89a7-30537d2f816f",
+            "cwd": "/private/var/folders/bh/xn2xmnl57md2whlcgb5916300000gq/T/dev-dev-footer-fixtures-W19Qcl/repository",
+            "kind": "agent",
+            "status": "failed",
+            "access": "read-only",
+            "model": "work-child-offline/work-child",
+            "exitCode": 1,
+            "completedAt": 1794149547136,
+            "error": "400 invalid request: malformed tool schema",
+            "context": {
+              "tokens": 2430,
+              "contextWindow": 200000,
+              "percent": 1.2149999999999999
+            },
+            "requested": {
+              "model": "work-child-offline/work-child"
+            },
+            "staleArtifact": false,
+            "logs": [
+              {
+                "stream": "result",
+                "available": true,
+                "text": "",
+                "truncated": false,
+                "nextOffset": null
+              },
+              {
+                "stream": "stderr",
+                "available": true,
+                "text": "",
+                "truncated": false,
+                "nextOffset": null
+              }
+            ]
+          }
+        ]
+      },
+      "timestamp": 0
+    },
+    {
+      "role": "custom",
+      "customType": "dev/work-outcome",
+      "content": "Work outcomes: producer observations, not verification. Read a result from offset 0 when it is not included. Honor dev-cycle checkpoints; report worktrees.\n[{\"id\":\"a0a242be-f386-4458-8746-94b7ad9764a4\",\"taskId\":\"look-around\",\"kind\":\"agent\",\"status\":\"completed\",\"exitCode\":0,\"result\":\"```json\\n{\\n  \\\"format\\\": \\\"evidence/1\\\",\\n  \\\"status\\\": \\\"complete\\\",\\n  \\\"findings\\\": [\\n    {\\n      \\\"claim\\\": \\\"one\\\"\\n    },\\n    {\\n      \\\"claim\\\": \\\"two\\\"\\n    },\\n    {\\n      \\\"claim\\\": \\\"three\\\"\\n    }\\n  ],\\n  \\\"limits\\\": [\\n    \\\"offline model\\\"\\n  ]\\n}\\n```\\nThe tracked file holds the committed fixture text.\"}]",
+      "display": true,
+      "details": {
+        "attempts": [
+          "a0a242be-f386-4458-8746-94b7ad9764a4"
+        ],
+        "children": [
+          {
+            "id": "a0a242be-f386-4458-8746-94b7ad9764a4",
+            "kind": "agent",
+            "sessionFile": "/private/var/folders/bh/xn2xmnl57md2whlcgb5916300000gq/T/dev-dev-footer-fixtures-W19Qcl/runtime/child-sessions/2026-11-08T14-52-27-040Z_01a1bba5-7c20-7773-8363-4912a22511f7.jsonl",
+            "effort": "off",
+            "turns": 3,
+            "toolUses": 3,
+            "startedAt": 1794149546222,
+            "completedAt": 1794149547561
+          }
+        ],
+        "outcomes": [
+          {
+            "id": "a0a242be-f386-4458-8746-94b7ad9764a4",
+            "taskId": "look-around",
+            "workflowTaskId": "fcdfc56e-d472-4923-95fb-6f5c0c735203",
+            "workspaceId": "33e5e370-4bed-4157-89a7-30537d2f816f",
+            "cwd": "/private/var/folders/bh/xn2xmnl57md2whlcgb5916300000gq/T/dev-dev-footer-fixtures-W19Qcl/repository",
+            "kind": "agent",
+            "status": "completed",
+            "access": "read-only",
+            "model": "work-child-offline/work-child",
+            "exitCode": 0,
+            "completedAt": 1794149547561,
+            "context": {
+              "tokens": 21900,
+              "contextWindow": 200000,
+              "percent": 10.95
+            },
+            "usage": {
+              "total": 65700,
+              "cost": 0
+            },
+            "requested": {
+              "model": "work-child-offline/work-child"
+            },
+            "staleArtifact": false,
+            "logs": [
+              {
+                "stream": "result",
+                "available": true,
+                "text": "```json\n{\n  \"format\": \"evidence/1\",\n  \"status\": \"complete\",\n  \"findings\": [\n    {\n      \"claim\": \"one\"\n    },\n    {\n      \"claim\": \"two\"\n    },\n    {\n      \"claim\": \"three\"\n    }\n  ],\n  \"limits\": [\n    \"offline model\"\n  ]\n}\n```\nThe tracked file holds the committed fixture text.",
+                "truncated": false,
+                "nextOffset": null
+              },
+              {
+                "stream": "stderr",
+                "available": true,
+                "text": "",
+                "truncated": false,
+                "nextOffset": null
+              }
+            ]
+          }
+        ]
+      },
+      "timestamp": 0
+    }
+  ],
+  "sessions": [
+    "0da24e25-ca0d-4973-a0fa-f5cc49f8bcc8.jsonl",
+    "a0a242be-f386-4458-8746-94b7ad9764a4.jsonl"
+  ],
+  "views": [
+    {
+      "sessionId": "01a1bba5-77b1-766b-ba7e-a46509288a07",
+      "children": [],
+      "commands": {
+        "running": 0
+      },
+      "blocks": {
+        "agentsBlocked": false,
+        "reactivationSuspended": false
+      }
+    },
+    {
+      "sessionId": "01a1bba5-77b1-766b-ba7e-a46509288a07",
+      "children": [
+        {
+          "id": "0da24e25-ca0d-4973-a0fa-f5cc49f8bcc8",
+          "taskId": "broken-child",
+          "status": "running",
+          "coordinator": false,
+          "access": "read-only",
+          "startedAt": 1794149546203,
+          "turns": 0
+        },
+        {
+          "id": "a0a242be-f386-4458-8746-94b7ad9764a4",
+          "taskId": "look-around",
+          "status": "running",
+          "coordinator": false,
+          "access": "read-only",
+          "startedAt": 1794149546222,
+          "turns": 0
+        }
+      ],
+      "commands": {
+        "running": 0
+      },
+      "blocks": {
+        "agentsBlocked": false,
+        "reactivationSuspended": false
+      }
+    },
+    {
+      "sessionId": "01a1bba5-77b1-766b-ba7e-a46509288a07",
+      "children": [
+        {
+          "id": "0da24e25-ca0d-4973-a0fa-f5cc49f8bcc8",
+          "taskId": "broken-child",
+          "status": "running",
+          "coordinator": false,
+          "access": "read-only",
+          "startedAt": 1794149546203,
+          "turns": 0
+        },
+        {
+          "id": "a0a242be-f386-4458-8746-94b7ad9764a4",
+          "taskId": "look-around",
+          "status": "running",
+          "coordinator": false,
+          "access": "read-only",
+          "startedAt": 1794149546222,
+          "turns": 0
+        }
+      ],
+      "commands": {
+        "running": 0
+      },
+      "blocks": {
+        "agentsBlocked": false,
+        "reactivationSuspended": false
+      }
+    },
+    {
+      "sessionId": "01a1bba5-77b1-766b-ba7e-a46509288a07",
+      "children": [
+        {
+          "id": "0da24e25-ca0d-4973-a0fa-f5cc49f8bcc8",
+          "taskId": "broken-child",
+          "status": "running",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "work-child-offline/work-child",
+          "effort": "off",
+          "startedAt": 1794149546203,
+          "turns": 0
+        },
+        {
+          "id": "a0a242be-f386-4458-8746-94b7ad9764a4",
+          "taskId": "look-around",
+          "status": "running",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "work-child-offline/work-child",
+          "effort": "off",
+          "startedAt": 1794149546222,
+          "turns": 0
+        }
+      ],
+      "commands": {
+        "running": 0
+      },
+      "blocks": {
+        "agentsBlocked": false,
+        "reactivationSuspended": false
+      }
+    },
+    {
+      "sessionId": "01a1bba5-77b1-766b-ba7e-a46509288a07",
+      "children": [
+        {
+          "id": "0da24e25-ca0d-4973-a0fa-f5cc49f8bcc8",
+          "taskId": "broken-child",
+          "status": "failed",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "work-child-offline/work-child",
+          "effort": "off",
+          "context": {
+            "tokens": 2430,
+            "contextWindow": 200000,
+            "percent": 1.2149999999999999
+          },
+          "startedAt": 1794149546203,
+          "completedAt": 1794149547136,
+          "turns": 0,
+          "error": "400 invalid request: malformed tool schema"
+        },
+        {
+          "id": "a0a242be-f386-4458-8746-94b7ad9764a4",
+          "taskId": "look-around",
+          "status": "running",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "work-child-offline/work-child",
+          "effort": "off",
+          "context": {
+            "tokens": 21985,
+            "contextWindow": 200000,
+            "percent": 10.9925
+          },
+          "startedAt": 1794149546222,
+          "turns": 0,
+          "activity": {
+            "kind": "tool",
+            "name": "read",
+            "target": "tracked.txt"
+          }
+        }
+      ],
+      "commands": {
+        "running": 0
+      },
+      "blocks": {
+        "agentsBlocked": false,
+        "reactivationSuspended": false
+      }
+    },
+    {
+      "sessionId": "01a1bba5-77b1-766b-ba7e-a46509288a07",
+      "children": [
+        {
+          "id": "0da24e25-ca0d-4973-a0fa-f5cc49f8bcc8",
+          "taskId": "broken-child",
+          "status": "failed",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "work-child-offline/work-child",
+          "effort": "off",
+          "context": {
+            "tokens": 2430,
+            "contextWindow": 200000,
+            "percent": 1.2149999999999999
+          },
+          "startedAt": 1794149546203,
+          "completedAt": 1794149547136,
+          "turns": 0,
+          "error": "400 invalid request: malformed tool schema"
+        },
+        {
+          "id": "a0a242be-f386-4458-8746-94b7ad9764a4",
+          "taskId": "look-around",
+          "status": "running",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "work-child-offline/work-child",
+          "effort": "off",
+          "context": {
+            "tokens": 21985,
+            "contextWindow": 200000,
+            "percent": 10.9925
+          },
+          "startedAt": 1794149546222,
+          "turns": 2
+        }
+      ],
+      "commands": {
+        "running": 0
+      },
+      "blocks": {
+        "agentsBlocked": false,
+        "reactivationSuspended": false
+      }
+    },
+    {
+      "sessionId": "01a1bba5-77b1-766b-ba7e-a46509288a07",
+      "children": [
+        {
+          "id": "0da24e25-ca0d-4973-a0fa-f5cc49f8bcc8",
+          "taskId": "broken-child",
+          "status": "failed",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "work-child-offline/work-child",
+          "effort": "off",
+          "context": {
+            "tokens": 2430,
+            "contextWindow": 200000,
+            "percent": 1.2149999999999999
+          },
+          "startedAt": 1794149546203,
+          "completedAt": 1794149547136,
+          "turns": 0,
+          "error": "400 invalid request: malformed tool schema"
+        },
+        {
+          "id": "a0a242be-f386-4458-8746-94b7ad9764a4",
+          "taskId": "look-around",
+          "status": "running",
+          "coordinator": false,
+          "access": "read-only",
+          "model": "work-child-offline/work-child",
+          "effort": "off",
+          "context": {
+            "tokens": 21900,
+            "contextWindow": 200000,
+            "percent": 10.95
+          },
+          "startedAt": 1794149546222,
+          "turns": 3
+        }
+      ],
+      "commands": {
+        "running": 0
+      },
+      "blocks": {
+        "agentsBlocked": false,
+        "reactivationSuspended": false
+      }
+    }
+  ]
+}
