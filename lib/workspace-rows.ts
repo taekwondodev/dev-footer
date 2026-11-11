@@ -1,6 +1,7 @@
 // Transcript rows for dev's workspace messages, drawn from `details` only, never from
 // model-visible content: `/workspace` answers and sweep receipts (`dev/workspace`), receipts
-// that changed nothing (`dev/workspace-receipt` entries) and switches (`dev/workspace-handoff`).
+// that changed nothing (`dev/workspace-receipt` entries), admissions refused for review
+// (`dev/workspace-refusal` entries) and switches (`dev/workspace-handoff`).
 // A workspace is named by its short id, and a managed worktree by `worktree <id>` instead of
 // its long path; ctrl+o adds reasons, next actions and the rows a collapsed sweep leaves out.
 import { homedir } from 'node:os'
@@ -250,6 +251,27 @@ export const receiptEntryRenderer: EntryRenderer = (entry, options, theme) => {
   const data = facts(entry.data)
   if (!isObject(data) || data.kind !== 'sweep' || !isObject(data.receipt)) return undefined
   return rows(sweepLines(theme, data.receipt, options.expanded, options), options.expanded, theme)
+}
+
+// A refusal that ended the turn has no answer from the model: the reason and the next step
+// are always shown, cut at the edge until ctrl+o wraps them.
+function refusalLines(theme: Theme, refusal: Fields, expanded: boolean, hints: Hints): string[] {
+  const reason = text(refusal.reason)
+  if (reason === undefined) return []
+  const hint = expanded ? '' : `${hints.keyText(EXPAND)} per i dettagli`
+  const effect = refusal.endedTurn === true ? 'turn ended' : 'command not run'
+  const next = text(refusal.next)
+  return [
+    header(theme, 'workspace refusal', theme.fg('muted', `review required · ${effect}`), hint),
+    `  ${theme.fg('error', '✗')} ${theme.fg('error', oneLine(reason))}`,
+    ...(next === undefined ? [] : [detail(theme, `next: ${oneLine(next)}`)]),
+  ]
+}
+
+export const refusalEntryRenderer: EntryRenderer = (entry, options, theme) => {
+  const data = facts(entry.data)
+  if (!isObject(data) || data.kind !== 'refusal') return undefined
+  return rows(refusalLines(theme, data, options.expanded, options), options.expanded, theme)
 }
 
 // A switch is one row; ctrl+o shows the full handoff the model received.

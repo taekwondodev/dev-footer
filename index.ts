@@ -18,7 +18,7 @@ import { outcomeRenderer, workRenderers } from './lib/rows.ts'
 import { onSessionRead } from './lib/session.ts'
 import { cacheRemaining, type SessionStats, sessionStats } from './lib/stats.ts'
 import { asWorkView, WORK_VIEW_EVENT, type WorkView } from './lib/view.ts'
-import { handoffRenderer, receiptEntryRenderer, workspaceMessageRenderer } from './lib/workspace-rows.ts'
+import { handoffRenderer, receiptEntryRenderer, refusalEntryRenderer, workspaceMessageRenderer } from './lib/workspace-rows.ts'
 
 export const LIST_WIDGET = 'dev-footer/subagents'
 const PULL_REQUEST_TTL_MS = 60_000
@@ -83,6 +83,7 @@ export default function (pi: ExtensionAPI): void {
   pi.registerMessageRenderer('dev/workspace', workspaceMessageRenderer)
   pi.registerMessageRenderer('dev/workspace-handoff', handoffRenderer)
   pi.registerEntryRenderer('dev/workspace-receipt', receiptEntryRenderer)
+  pi.registerEntryRenderer('dev/workspace-refusal', refusalEntryRenderer)
 
   // The default branch and detached heads have no pull request worth a network call.
   const refreshPullRequest = (cwd: string): void => {
