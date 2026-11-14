@@ -27,10 +27,16 @@ export interface Child {
   readonly error?: string
 }
 
+export interface QuietCommand {
+  readonly id: string
+  readonly taskId: string
+  readonly since: number
+}
+
 export interface WorkView {
   readonly sessionId: string
   readonly children: readonly Child[]
-  readonly commands: { readonly running: number }
+  readonly commands: { readonly running: number; readonly quiet: readonly QuietCommand[] }
   readonly blocks: { readonly agentsBlocked: boolean; readonly reactivationSuspended: boolean }
 }
 
@@ -76,6 +82,9 @@ const isChild = (value: unknown): value is Child =>
   (value.activity === undefined || isActivity(value.activity)) &&
   optional(value.error, 'string')
 
+const isQuietCommand = (value: unknown): value is QuietCommand =>
+  isObject(value) && typeof value.id === 'string' && typeof value.taskId === 'string' && finite(value.since)
+
 export const asWorkView = (value: unknown): WorkView | undefined =>
   isObject(value) &&
   typeof value.sessionId === 'string' &&
@@ -83,6 +92,8 @@ export const asWorkView = (value: unknown): WorkView | undefined =>
   value.children.every(isChild) &&
   isObject(value.commands) &&
   finite(value.commands.running) &&
+  Array.isArray(value.commands.quiet) &&
+  value.commands.quiet.every(isQuietCommand) &&
   isObject(value.blocks) &&
   typeof value.blocks.agentsBlocked === 'boolean' &&
   typeof value.blocks.reactivationSuspended === 'boolean'

@@ -155,6 +155,15 @@ function overflowRow(theme: Theme, hidden: readonly Child[]): string {
 
 const notice = (theme: Theme, text: string): string => theme.fg('warning', `${theme.bold('!')}  ${text}`)
 
+// A quiet command has printed nothing for a while; dev reports it so the user can check on it.
+function commandsRow(theme: Theme, commands: WorkView['commands']): string {
+  const { running, quiet } = commands
+  const row = theme.fg('muted', `${running} ${running === 1 ? 'command' : 'commands'} running`)
+  if (quiet.length === 0) return row
+  const silent = quiet.map(command => taskText(command.taskId)).join(', ')
+  return row + theme.fg('dim', ' · ') + theme.fg('warning', `quiet: ${silent}`)
+}
+
 export function listRows(theme: Theme, view: WorkView | undefined, width: number, now: number, frame = 0): string[] {
   if (view === undefined || width <= 0) return []
   const rows = ordered(view.children)
@@ -174,7 +183,7 @@ export function listRows(theme: Theme, view: WorkView | undefined, width: number
     lines.splice(
       shown.findIndex(row => !row.live) === -1 ? shown.length : shown.findIndex(row => !row.live),
       0,
-      theme.fg('muted', `${commands} ${commands === 1 ? 'command' : 'commands'} running`),
+      commandsRow(theme, view.commands),
     )
   if (hidden.length > 0) lines.push(overflowRow(theme, hidden))
   if (view.blocks.agentsBlocked) lines.push(notice(theme, 'subscription exhausted: new agents blocked'))
