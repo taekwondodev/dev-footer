@@ -3,10 +3,11 @@
 // that changed nothing (`dev/workspace-receipt` entries), admissions refused for review
 // (`dev/workspace-refusal` entries) and switches (`dev/workspace-handoff`).
 // A workspace is named by its short id, and a managed worktree by `worktree <id>` instead of
-// its long path; ctrl+o adds reasons, next actions and the rows a collapsed sweep leaves out.
+// its long path; ctrl+o adds paths, reasons, next actions and the rows a collapsed sweep leaves out.
 import { homedir } from 'node:os'
+import { basename } from 'node:path'
 import type { EntryRenderer, MessageRenderer, Theme, ThemeColor } from '@earendil-works/pi-coding-agent'
-import { Box, type Component, Text, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
+import { Box, type Component, sliceByColumn, Text, truncateToWidth, visibleWidth, wrapTextWithAnsi } from '@earendil-works/pi-tui'
 import { oneLine, plainDeep } from './header.ts'
 
 type Fields = Record<string, unknown>
@@ -65,22 +66,44 @@ const statusOf = (theme: Theme, table: typeof SWEEP_STATUS, outcome: unknown): s
   return status(theme, color, word)
 }
 
+// A fact after a lead: an indent, or a label in the status column. Collapsed it is cut at the
+// edge; expanded it wraps under its own first column, not under the block's edge. A path
+// breaks after a separator, never at its spaces.
+interface Hanging {
+  readonly lead: string
+  readonly text: string
+  readonly color: ThemeColor
+  readonly path?: true
+}
+
+// A header's hint sits at the right edge, as in the work rows; the summary is cut before it.
+interface Header {
+  readonly left: string
+  readonly hint: string
+}
+type Line = string | Header | Hanging
+
 // A row is a status, a place and a trailing fact; details sit under the place column.
 interface Row {
   readonly status: string
   readonly place: string
   readonly trail: string
-  readonly details: readonly string[]
+  readonly details: readonly Line[]
 }
 
 const GAP = '  '
 const INDENT = '  '
 const DETAIL = INDENT + ' '.repeat(STATUS_WIDTH) + GAP
 
-const detail = (theme: Theme, line: string, color: ThemeColor = 'dim'): string => `${DETAIL}${theme.fg(color, line)}`
+const detail = (line: string, color: ThemeColor = 'dim'): Hanging => ({ lead: DETAIL, text: line, color })
+const pathDetail = (path: string): Hanging => ({ lead: DETAIL, text: shortPath(path), color: 'dim', path: true })
+const labelled = (theme: Theme, label: string, fact: Omit<Hanging, 'lead'>): Hanging => ({
+  lead: `${INDENT}${status(theme, 'dim', label)}${GAP}`,
+  ...fact,
+})
 
 // Places differ in width (a path or `worktree <id>`), so each block pads them to its widest.
-function table(rows: readonly Row[]): string[] {
+function table(rows: readonly Row[]): Line[] {
   const width = Math.max(0, ...rows.map(row => visibleWidth(row.place)))
   return rows.flatMap(row => {
     const place = row.trail === '' ? row.place : row.place + ' '.repeat(width - visibleWidth(row.place))
@@ -142,13 +165,6 @@ const counts = (rows: readonly SweepRow[]): string => {
     .join(' · ')
 }
 
-// A header's hint sits at the right edge, as in the work rows; the summary is cut before it.
-interface Header {
-  readonly left: string
-  readonly hint: string
-}
-type Line = string | Header
-
 const header = (theme: Theme, title: string, rest: string, hint: string): Header => ({
   left: `${theme.bold(theme.fg('toolTitle', title))}  ${rest}`,
   hint: hint === '' ? '' : theme.fg('dim', hint),
@@ -162,6 +178,37 @@ function headerLine({ left, hint }: Header, width: number): string {
 
 const hintOf = (expanded: boolean, hints: Hints): string => (expanded ? '' : `${hints.keyText(EXPAND)} per i dettagli`)
 
+// Below this room a hanging column would leave a few words per row, so the fact wraps whole.
+const HANGING_MIN = 24
+
+// A segment wider than the room is cut at the edge.
+function pathRows(path: string, room: number): string[] {
+  const rows: string[] = []
+  let row = ''
+  for (const segment of path.split(/(?<=\/)/)) {
+    if (visibleWidth(row + segment) <= room) {
+      row += segment
+      continue
+    }
+    if (row !== '') rows.push(row)
+    row = segment
+    while (visibleWidth(row) > room) {
+      rows.push(sliceByColumn(row, 0, room))
+      row = sliceByColumn(row, room, visibleWidth(row) - room)
+    }
+  }
+  return row === '' ? rows : [...rows, row]
+}
+
+function hangingLines(theme: Theme, { lead, text, color, path }: Hanging, width: number, expanded: boolean): string[] {
+  if (!expanded) return [truncateToWidth(lead + theme.fg(color, text), width, '…')]
+  const room = width - visibleWidth(lead)
+  if (room < HANGING_MIN) return [lead + theme.fg(color, text)]
+  const rows = path === true ? pathRows(text, room) : wrapTextWithAnsi(text, room)
+  const under = ' '.repeat(visibleWidth(lead))
+  return rows.map((row, index) => (index === 0 ? lead : under) + theme.fg(color, row))
+}
+
 // The header counts every outcome, so collapsed rows leave out kept and skipped ones silently.
 function sweepLines(theme: Theme, receipt: Fields, expanded: boolean, hints: Hints): Line[] {
   const all = objects(receipt.rows).map(row => sweepRow(theme, row))
@@ -170,7 +217,7 @@ function sweepLines(theme: Theme, receipt: Fields, expanded: boolean, hints: Hin
     ...row,
     details:
       row.reason !== undefined && (expanded || row.outcome === 'review-required')
-        ? [detail(theme, oneLine(row.reason), row.outcome === 'review-required' ? 'error' : 'dim')]
+        ? [detail(oneLine(row.reason), row.outcome === 'review-required' ? 'error' : 'dim')]
         : [],
   }))
   const moment = MOMENTS[String(receipt.moment)]
@@ -181,16 +228,16 @@ function sweepLines(theme: Theme, receipt: Fields, expanded: boolean, hints: Hin
 
 function viewRow(theme: Theme, view: Fields, expanded: boolean, current: unknown): Row {
   const here = current !== undefined && view.workspaceId === current ? `${GAP}${theme.fg('accent', 'current')}` : ''
-  const details: string[] = []
+  const details: Line[] = []
   if (expanded) {
-    if (view.origin === 'managed' && text(view.path) !== undefined) details.push(detail(theme, shortPath(text(view.path)!)))
-    if (text(view.reason) !== undefined) details.push(detail(theme, oneLine(text(view.reason)!)))
-    if (text(view.nextAction) !== undefined) details.push(detail(theme, `next: ${oneLine(text(view.nextAction)!)}`))
+    if (view.origin === 'managed' && text(view.path) !== undefined) details.push(pathDetail(text(view.path)!))
+    if (text(view.reason) !== undefined) details.push(detail(oneLine(text(view.reason)!)))
+    if (text(view.nextAction) !== undefined) details.push(detail(`next: ${oneLine(text(view.nextAction)!)}`))
     for (const use of objects(view.uses)) {
       const attempt = isObject(use.execution) ? text(use.execution.attemptId) : undefined
-      details.push(detail(theme, `use ${String(use.access)} · ${String(use.stage)}${attempt === undefined ? '' : ` · attempt ${shortId(attempt)}`}`))
+      details.push(detail(`use ${String(use.access)} · ${String(use.stage)}${attempt === undefined ? '' : ` · attempt ${shortId(attempt)}`}`))
     }
-    for (const item of objects(view.pending)) details.push(detail(theme, `pending ${String(item.kind)} · ${String(item.stage)}`, 'warning'))
+    for (const item of objects(view.pending)) details.push(detail(`pending ${String(item.kind)} · ${String(item.stage)}`, 'warning'))
   }
   return { status: statusOf(theme, VIEW_STATUS, view.outcome), place: place(theme, view), trail: task(theme, view.taskId) + here, details }
 }
@@ -200,8 +247,7 @@ const emptyRow = (theme: Theme): string => `${INDENT}${theme.fg('dim', 'no works
 function reportLines(theme: Theme, report: Fields, expanded: boolean, hints: Hints): Line[] {
   const hint = hintOf(expanded, hints)
   const artifacts = text(report.artifacts)
-  const artifactsLine =
-    expanded && artifacts !== undefined ? [`${INDENT}${status(theme, 'dim', 'artifacts')}${GAP}${theme.fg('dim', shortPath(artifacts))}`] : []
+  const artifactsLine = expanded && artifacts !== undefined ? [labelled(theme, 'artifacts', { text: shortPath(artifacts), color: 'dim', path: true })] : []
   if (report.kind === 'list') {
     const views = objects(report.views)
     const root = text(report.repositoryRoot)
@@ -226,14 +272,14 @@ function reportLines(theme: Theme, report: Fields, expanded: boolean, hints: Hin
     const rows = assessments.map((assessment): Row => {
       const completion = isObject(assessment.completion) ? assessment.completion : {}
       const finished = completion.kind === 'finished'
-      const details: string[] = []
+      const details: Line[] = []
       if (expanded) {
-        if (text(completion.reason) !== undefined) details.push(detail(theme, oneLine(text(completion.reason)!)))
-        for (const reason of strings(assessment.reasons)) details.push(detail(theme, `- ${oneLine(reason)}`))
+        if (text(completion.reason) !== undefined) details.push(detail(oneLine(text(completion.reason)!)))
+        for (const reason of strings(assessment.reasons)) details.push(detail(`- ${oneLine(reason)}`))
         const target = isObject(assessment.target) ? text(assessment.target.description) : undefined
-        if (target !== undefined) details.push(detail(theme, `target: ${oneLine(target)}`))
-        for (const item of strings(assessment.residual)) details.push(detail(theme, `residual: ${oneLine(item)}`, 'warning'))
-        for (const action of strings(assessment.nextActions)) details.push(detail(theme, `next: ${oneLine(action)}`))
+        if (target !== undefined) details.push(detail(`target: ${oneLine(target)}`))
+        for (const item of strings(assessment.residual)) details.push(detail(`residual: ${oneLine(item)}`, 'warning'))
+        for (const action of strings(assessment.nextActions)) details.push(detail(`next: ${oneLine(action)}`))
       }
       return {
         status: status(theme, finished ? 'success' : 'muted', finished ? 'finished' : 'retained'),
@@ -251,7 +297,7 @@ function reportLines(theme: Theme, report: Fields, expanded: boolean, hints: Hin
 }
 
 // Lines are rebuilt only when the width changes; render() reads memory only. Collapsed rows
-// are cut at the edge; expanded ones wrap, so ctrl+o shows every reason and command whole.
+// are cut at the edge; expanded ones wrap, so ctrl+o shows every path, reason and command whole.
 class Rows implements Component {
   private cache: { readonly width: number; readonly lines: string[] } | undefined
 
@@ -265,9 +311,10 @@ class Rows implements Component {
     if (this.cache?.width === width) return this.cache.lines
     const box = new Box(1, 1, line => this.theme.bg('customMessageBg', line))
     const inner = Math.max(1, width - 2)
-    const shown = this.lines.map(line => {
-      if (typeof line !== 'string') return headerLine(line, inner)
-      return this.expanded ? line : truncateToWidth(line, inner, '…')
+    const shown = this.lines.flatMap(line => {
+      if (typeof line === 'string') return [this.expanded ? line : truncateToWidth(line, inner, '…')]
+      if ('hint' in line) return [headerLine(line, inner)]
+      return hangingLines(this.theme, line, inner, this.expanded)
     })
     box.addChild(new Text(shown.join('\n'), 0, 0))
     const lines = box.render(width)
@@ -310,8 +357,8 @@ function refusalLines(theme: Theme, refusal: Fields, expanded: boolean, hints: H
   const next = text(refusal.next)
   return [
     header(theme, 'workspace refusal', theme.fg('muted', `review required · ${effect}`), hintOf(expanded, hints)),
-    `${INDENT}${theme.fg('error', oneLine(reason))}`,
-    ...(next === undefined ? [] : [`${INDENT}${theme.fg('dim', `next: ${oneLine(next)}`)}`]),
+    { lead: INDENT, text: oneLine(reason), color: 'error' },
+    ...(next === undefined ? [] : [{ lead: INDENT, text: `next: ${oneLine(next)}`, color: 'dim' } satisfies Hanging]),
   ]
 }
 
@@ -321,22 +368,33 @@ export const refusalEntryRenderer: EntryRenderer = (entry, options, theme) => {
   return rows(refusalLines(theme, data, options.expanded, options), options.expanded, theme)
 }
 
-// A switch is one row; ctrl+o shows the full handoff the model received.
+// A reason opens with its cause; the header carries that sentence, ctrl+o the whole reason.
+const cause = (reason: string): string => {
+  const end = reason.indexOf('. ')
+  const first = (end === -1 ? reason : reason.slice(0, end)).replace(/\.$/, '')
+  return first.charAt(0).toLowerCase() + first.slice(1)
+}
+
+// A switch is one row naming where the conversation works now and why it moved; ctrl+o adds
+// the worktree's path and the whole reason. The handoff the model received repeats both and
+// is not drawn.
+function switchLines(theme: Theme, details: Fields, expanded: boolean, hints: Hints): Line[] {
+  const cwd = text(details.cwd)
+  const reason = text(details.reason)
+  // Dev names a managed worktree's directory by its workspace id; any other checkout is named by its path.
+  const worktree = cwd !== undefined && basename(cwd) === details.workspaceId ? cwd : undefined
+  const where = place(theme, { workspaceId: details.workspaceId, path: cwd, origin: worktree === undefined ? undefined : 'managed' })
+  const why = reason === undefined ? '' : theme.fg('muted', ` · ${cause(oneLine(reason))}`)
+  const more: Line[] = [
+    ...(worktree === undefined ? [] : [labelled(theme, 'path', { text: shortPath(worktree), color: 'muted', path: true })]),
+    ...(reason === undefined ? [] : [labelled(theme, 'reason', { text: oneLine(reason), color: 'muted' })]),
+  ]
+  const title = details.resumed === true ? 'workspace resumed' : 'workspace switched'
+  return [header(theme, title, where + why, more.length === 0 ? '' : hintOf(expanded, hints)), ...(expanded ? more : [])]
+}
+
 export const handoffRenderer: MessageRenderer = (message, options, theme) => {
   const details = facts(message.details)
   if (!isObject(details) || details.kind !== 'switch') return undefined
-  const cwd = text(details.cwd)
-  const reason = text(details.reason)
-  const lines: Line[] = [
-    header(
-      theme,
-      details.resumed === true ? 'workspace resumed' : 'workspace switched',
-      `${theme.fg('muted', shortId(details.workspaceId))}${cwd === undefined ? '' : `${GAP}${theme.fg('dim', shortPath(cwd))}`}`,
-      hintOf(options.expanded, options),
-    ),
-    ...(reason === undefined ? [] : [`${INDENT}${theme.fg('muted', oneLine(reason))}`]),
-  ]
-  if (options.expanded && typeof message.content === 'string')
-    lines.push('', ...String(plainDeep(message.content)).split('\n').map(line => theme.fg('dim', `${INDENT}${line}`)))
-  return rows(lines, options.expanded, theme)
+  return rows(switchLines(theme, details, options.expanded, options), options.expanded, theme)
 }
