@@ -3,7 +3,9 @@
 // that changed nothing (`dev/workspace-receipt` entries), admissions refused for review
 // (`dev/workspace-refusal` entries) and switches (`dev/workspace-handoff`).
 // A workspace is named by its short id, and a managed worktree by `worktree <id>` instead of
-// its long path; ctrl+o adds paths, reasons, next actions and the rows a collapsed sweep leaves out.
+// its long path; a listed workspace also shows its head, the branch checked out there or the
+// commit when detached. ctrl+o adds paths, reasons, next actions and the rows a collapsed
+// sweep leaves out.
 import { homedir } from 'node:os'
 import { basename } from 'node:path'
 import type { EntryRenderer, MessageRenderer, Theme, ThemeColor } from '@earendil-works/pi-coding-agent'
@@ -33,6 +35,17 @@ const place = (theme: Theme, fields: Fields): string => {
   const path = text(fields.path)
   if (fields.origin === 'managed' || path === undefined) return `${theme.fg('text', 'worktree')} ${theme.fg('muted', id)}`
   return `${theme.fg('text', shortPath(path))} ${theme.fg('dim', id)}`
+}
+
+// Dev reports the head as a branch name or a detached commit, and none for a missing directory.
+const BRANCH = '\u{f418}'
+const SHORT_COMMIT = 7
+const head = (theme: Theme, value: unknown): string => {
+  if (!isObject(value)) return ''
+  const name = value.kind === 'branch' ? text(value.name) : undefined
+  if (name !== undefined) return `${theme.fg('accent', BRANCH)} ${theme.fg('text', name)}`
+  const commit = value.kind === 'detached' ? text(value.commit) : undefined
+  return commit === undefined ? '' : theme.fg('muted', `detached ${commit.slice(0, SHORT_COMMIT)}`)
 }
 
 const task = (theme: Theme, taskId: unknown): string =>
@@ -83,10 +96,12 @@ interface Header {
 }
 type Line = string | Header | Hanging
 
-// A row is a status, a place and a trailing fact; details sit under the place column.
+// A row is a status, a place, a head where the block has any, and a trailing fact; details
+// sit under the place column.
 interface Row {
   readonly status: string
   readonly place: string
+  readonly head?: string
   readonly trail: string
   readonly details: readonly Line[]
 }
@@ -102,12 +117,20 @@ const labelled = (theme: Theme, label: string, fact: Omit<Hanging, 'lead'>): Han
   ...fact,
 })
 
-// Places differ in width (a path or `worktree <id>`), so each block pads them to its widest.
+const padded = (cell: string, width: number): string => cell + ' '.repeat(width - visibleWidth(cell))
+
+// Places differ in width (a path or `worktree <id>`), and so do heads, so each block pads
+// them to its widest. A block without heads has no head column.
 function table(rows: readonly Row[]): Line[] {
   const width = Math.max(0, ...rows.map(row => visibleWidth(row.place)))
+  const headWidth = Math.max(0, ...rows.map(row => visibleWidth(row.head ?? '')))
   return rows.flatMap(row => {
-    const place = row.trail === '' ? row.place : row.place + ' '.repeat(width - visibleWidth(row.place))
-    const cells = [row.status, place, ...(row.trail === '' ? [] : [row.trail])]
+    const cells = [
+      row.status,
+      padded(row.place, width),
+      ...(headWidth === 0 ? [] : [padded(row.head ?? '', headWidth)]),
+      ...(row.trail === '' ? [] : [row.trail]),
+    ]
     return [`${INDENT}${cells.join(GAP)}`.trimEnd(), ...row.details]
   })
 }
@@ -239,7 +262,13 @@ function viewRow(theme: Theme, view: Fields, expanded: boolean, current: unknown
     }
     for (const item of objects(view.pending)) details.push(detail(`pending ${String(item.kind)} · ${String(item.stage)}`, 'warning'))
   }
-  return { status: statusOf(theme, VIEW_STATUS, view.outcome), place: place(theme, view), trail: task(theme, view.taskId) + here, details }
+  return {
+    status: statusOf(theme, VIEW_STATUS, view.outcome),
+    place: place(theme, view),
+    head: head(theme, view.head),
+    trail: task(theme, view.taskId) + here,
+    details,
+  }
 }
 
 const emptyRow = (theme: Theme): string => `${INDENT}${theme.fg('dim', 'no workspace records')}`
