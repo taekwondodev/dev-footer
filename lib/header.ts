@@ -1,6 +1,7 @@
 // Shared by the subagent list and the transcript rows: titles, task text, glyphs and
 // compact numbers, so both surfaces name a child the same way.
 import type { Theme, ThemeColor } from '@earendil-works/pi-coding-agent'
+import { truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
 
 export type Status = 'running' | 'waiting' | 'completed' | 'failed' | 'cancelled' | 'unknown'
 
@@ -20,6 +21,35 @@ export const plain = (value: string): string => value.replaceAll(/[^\P{Cc}\n\t]+
 
 // For fields drawn on one row: newlines and tabs become spaces too.
 export const oneLine = (value: string): string => value.replaceAll(/\p{Cc}+/gu, ' ')
+
+// An error or a reason reads `<what failed>: <why>[: detail]; <what to do>`. The row it
+// belongs to already names what failed, so collapsed rows show the why: the text after the
+// first `: ` of its first sentence, up to that sentence's end. Text without a `: ` keeps its
+// first sentence. ctrl+o shows the whole text.
+export const cause = (value: string): string => {
+  const whole = oneLine(value).trim()
+  const end = whole.search(/[.;](?=\s|$)/)
+  const sentence = end === -1 ? whole : whole.slice(0, end)
+  const colon = sentence.indexOf(': ')
+  const why = (colon === -1 ? sentence : sentence.slice(colon + 2)).trim()
+  return why === '' ? whole : why
+}
+
+// The transcript panel's background. A cut row ends its styles with a full reset, which would
+// also drop the background for the rest of the row; the panel opens it again after each reset.
+const RESET = '\x1b[0m'
+export const panel =
+  (theme: Theme) =>
+  (line: string): string =>
+    theme.bg('customMessageBg', line.replaceAll(RESET, RESET + theme.getBgAnsi('customMessageBg')))
+
+// A header with its hint at the right edge; the header is cut before the hint. Without a hint
+// the header is left whole, for the caller to wrap.
+export function hinted(left: string, hint: string, width: number): string {
+  if (hint === '') return left
+  const summary = truncateToWidth(left, Math.max(1, width - visibleWidth(hint) - 3), '…')
+  return truncateToWidth(summary + ' '.repeat(Math.max(3, width - visibleWidth(summary) - visibleWidth(hint))) + hint, width, '…')
+}
 
 export const plainDeep = (value: unknown, clean: (value: string) => string = plain): unknown => {
   if (typeof value === 'string') return clean(value)

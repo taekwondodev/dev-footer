@@ -10,7 +10,7 @@ import { homedir } from 'node:os'
 import { basename } from 'node:path'
 import type { EntryRenderer, MessageRenderer, Theme, ThemeColor } from '@earendil-works/pi-coding-agent'
 import { Box, type Component, sliceByColumn, Text, truncateToWidth, visibleWidth, wrapTextWithAnsi } from '@earendil-works/pi-tui'
-import { oneLine, plainDeep } from './header.ts'
+import { cause, hinted, oneLine, panel, plainDeep } from './header.ts'
 
 type Fields = Record<string, unknown>
 const isObject = (value: unknown): value is Fields =>
@@ -193,12 +193,6 @@ const header = (theme: Theme, title: string, rest: string, hint: string): Header
   hint: hint === '' ? '' : theme.fg('dim', hint),
 })
 
-function headerLine({ left, hint }: Header, width: number): string {
-  if (hint === '') return left
-  const summary = truncateToWidth(left, Math.max(1, width - visibleWidth(hint) - 3), '…')
-  return truncateToWidth(summary + ' '.repeat(Math.max(3, width - visibleWidth(summary) - visibleWidth(hint))) + hint, width, '…')
-}
-
 const hintOf = (expanded: boolean, hints: Hints): string => (expanded ? '' : `${hints.keyText(EXPAND)} per i dettagli`)
 
 // Below this room a hanging column would leave a few words per row, so the fact wraps whole.
@@ -240,7 +234,7 @@ function sweepLines(theme: Theme, receipt: Fields, expanded: boolean, hints: Hin
     ...row,
     details:
       row.reason !== undefined && (expanded || row.outcome === 'review-required')
-        ? [detail(oneLine(row.reason), row.outcome === 'review-required' ? 'error' : 'dim')]
+        ? [detail(expanded ? oneLine(row.reason) : cause(row.reason), row.outcome === 'review-required' ? 'muted' : 'dim')]
         : [],
   }))
   const moment = MOMENTS[String(receipt.moment)]
@@ -338,11 +332,11 @@ class Rows implements Component {
 
   render(width: number): string[] {
     if (this.cache?.width === width) return this.cache.lines
-    const box = new Box(1, 1, line => this.theme.bg('customMessageBg', line))
+    const box = new Box(1, 1, panel(this.theme))
     const inner = Math.max(1, width - 2)
     const shown = this.lines.flatMap(line => {
       if (typeof line === 'string') return [this.expanded ? line : truncateToWidth(line, inner, '…')]
-      if ('hint' in line) return [headerLine(line, inner)]
+      if ('hint' in line) return [hinted(line.left, line.hint, inner)]
       return hangingLines(this.theme, line, inner, this.expanded)
     })
     box.addChild(new Text(shown.join('\n'), 0, 0))
@@ -377,16 +371,17 @@ export const receiptEntryRenderer: EntryRenderer = (entry, options, theme) => {
   return rows(sweepLines(theme, data.receipt, options.expanded, options), options.expanded, theme)
 }
 
-// A refusal that ended the turn has no answer from the model: the reason and the next step
-// are always shown, cut at the edge until ctrl+o wraps them.
+// A refusal that ended the turn has no answer from the model: the cause of the refusal and the
+// next step are always shown, cut at the edge; ctrl+o wraps the whole reason. As in a sweep,
+// only the status is red.
 function refusalLines(theme: Theme, refusal: Fields, expanded: boolean, hints: Hints): Line[] {
   const reason = text(refusal.reason)
   if (reason === undefined) return []
   const effect = refusal.endedTurn === true ? 'turn ended' : 'command not run'
   const next = text(refusal.next)
   return [
-    header(theme, 'workspace refusal', theme.fg('muted', `review required · ${effect}`), hintOf(expanded, hints)),
-    { lead: INDENT, text: oneLine(reason), color: 'error' },
+    header(theme, 'workspace refusal', `${theme.fg('error', 'review required')}${theme.fg('muted', ` · ${effect}`)}`, hintOf(expanded, hints)),
+    { lead: INDENT, text: expanded ? oneLine(reason) : cause(reason), color: 'muted' },
     ...(next === undefined ? [] : [{ lead: INDENT, text: `next: ${oneLine(next)}`, color: 'dim' } satisfies Hanging]),
   ]
 }
@@ -397,10 +392,9 @@ export const refusalEntryRenderer: EntryRenderer = (entry, options, theme) => {
   return rows(refusalLines(theme, data, options.expanded, options), options.expanded, theme)
 }
 
-// A reason opens with its cause; the header carries that sentence, ctrl+o the whole reason.
-const cause = (reason: string): string => {
-  const end = reason.indexOf('. ')
-  const first = (end === -1 ? reason : reason.slice(0, end)).replace(/\.$/, '')
+// A reason opens with its cause; the header carries it after a separator, ctrl+o the whole reason.
+const inlineCause = (reason: string): string => {
+  const first = cause(reason)
   return first.charAt(0).toLowerCase() + first.slice(1)
 }
 
@@ -413,7 +407,7 @@ function switchLines(theme: Theme, details: Fields, expanded: boolean, hints: Hi
   // Dev names a managed worktree's directory by its workspace id; any other checkout is named by its path.
   const worktree = cwd !== undefined && basename(cwd) === details.workspaceId ? cwd : undefined
   const where = place(theme, { workspaceId: details.workspaceId, path: cwd, origin: worktree === undefined ? undefined : 'managed' })
-  const why = reason === undefined ? '' : theme.fg('muted', ` · ${cause(oneLine(reason))}`)
+  const why = reason === undefined ? '' : theme.fg('muted', ` · ${inlineCause(reason)}`)
   const more: Line[] = [
     ...(worktree === undefined ? [] : [labelled(theme, 'path', { text: shortPath(worktree), color: 'muted', path: true })]),
     ...(reason === undefined ? [] : [labelled(theme, 'reason', { text: oneLine(reason), color: 'muted' })]),

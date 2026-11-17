@@ -102,8 +102,8 @@ function paintActivity(theme: Theme, activity: Activity): (text: string) => stri
 function activityOf(theme: Theme, child: Child): { readonly text: string; readonly paint: (text: string) => string } | undefined {
   if (child.status === 'running' && child.activity !== undefined)
     return { text: activityLabel(child.activity), paint: paintActivity(theme, child.activity) }
-  if (child.status === 'failed' && child.error !== undefined)
-    return { text: child.error.replace(/\s+/g, ' ').trim(), paint: text => theme.fg('error', text) }
+  // The list shows state only: a failure is its status word, its reason is in the transcript.
+  if (child.status === 'failed') return { text: STATUS_WORDS.failed, paint: text => theme.fg('error', text) }
   return undefined
 }
 

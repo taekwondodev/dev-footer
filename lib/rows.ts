@@ -3,11 +3,15 @@
 // static launch row; an outcome is one block per child with its tool trail and answer on
 // ctrl+o; other actions and command outcomes are one compact row each.
 import type { MessageRenderer, Theme, ToolRenderers } from '@earendil-works/pi-coding-agent'
-import { Box, type Component, Spacer, Text, truncateToWidth, visibleWidth } from '@earendil-works/pi-tui'
+import { Box, type Component, Spacer, Text, truncateToWidth, wrapTextWithAnsi } from '@earendil-works/pi-tui'
 import {
+  cause,
   childHeader,
   effortText,
   glyph,
+  hinted,
+  oneLine,
+  panel,
   plain,
   plainDeep,
   type Role,
@@ -106,6 +110,27 @@ class LaunchRow implements Component {
   invalidate(): void {}
 }
 
+// A refused call: its cause after the failure glyph, the whole message on ctrl+o.
+class ErrorRow implements Component {
+  constructor(
+    private readonly message: string,
+    private readonly expanded: boolean,
+    private readonly theme: Theme,
+    private readonly hints: Hints,
+  ) {}
+
+  render(width: number): string[] {
+    const mark = `${this.theme.fg('error', '✗')} `
+    const short = cause(this.message)
+    if (this.expanded)
+      return wrapTextWithAnsi(this.message.trim(), Math.max(1, width - 2)).map((row, index) => (index === 0 ? mark : '  ') + this.theme.fg('text', row))
+    const hint = short === oneLine(this.message).trim() ? '' : this.theme.fg('dim', `${this.hints.keyText(EXPAND)} per i dettagli`)
+    return [truncateToWidth(hinted(mark + this.theme.fg('muted', short), hint, width), width, '…')]
+  }
+
+  invalidate(): void {}
+}
+
 function renderCall(args: unknown, theme: Theme, state: LaunchState): Component {
   const input = isObject(args) ? args : {}
   const action = text(input.action) ?? 'work'
@@ -146,7 +171,7 @@ const attemptState = (theme: Theme, attempt: Fields): string => {
   const parts = [STATUS_WORDS[status]]
   if (exitCode !== undefined) parts.push(`exit ${exitCode}`)
   const error = text(attempt.error)
-  return `${glyph(theme, status)} ${theme.fg('dim', parts.join(' · '))}${error === undefined ? '' : `  ${theme.fg('error', firstLine(error))}`}`
+  return `${glyph(theme, status)} ${theme.fg('dim', parts.join(' · '))}${error === undefined ? '' : `  ${theme.fg('muted', cause(error))}`}`
 }
 
 function launchMeta(theme: Theme, attempt: Fields): string {
@@ -233,8 +258,8 @@ export function workRenderers(): ToolRenderers {
     renderCall: (args, theme, context) => renderCall(plainDeep(args), theme, context.state as LaunchState),
     renderResult: (result, options, theme, context) => {
       if (context.isError) {
-        const message = result.content.flatMap(part => (part.type === 'text' ? [part.text] : [])).join('\n')
-        return new Text(theme.fg('error', firstLine(plain(message))), 0, 0)
+        const message = plain(result.content.flatMap(part => (part.type === 'text' ? [part.text] : [])).join('\n'))
+        return new ErrorRow(message, options.expanded, theme, context)
       }
       const args = plainDeep(context.args)
       const details = plainDeep(result.details)
@@ -320,33 +345,40 @@ function trailLines(theme: Theme, outcome: Outcome): string[] {
   return read.trail.map((calls, index) => theme.fg('dim', `${String(index + 1).padEnd(4)}${calls.join(' · ')}`))
 }
 
+// Collapsed, a child is its header with the hint at the right edge, its facts and one line:
+// the answer's summary, or the cause of a failure. Expanded, its tools and its answer or
+// whole error follow. Only the glyph carries the status color.
 function childBlock(theme: Theme, outcome: Outcome, expanded: boolean, hints: Hints, width: number): Component[] {
   const { entry } = outcome
   const status = statusOf(entry.status)
-  const header = [`${glyph(theme, status)} ${childHeader(theme, roleOf(entry), text(entry.taskId) ?? '')}`, `  ${metaLine(theme, outcome)}`]
+  const name = `${glyph(theme, status)} ${childHeader(theme, roleOf(entry), text(entry.taskId) ?? '')}`
+  const meta = `  ${metaLine(theme, outcome)}`
   const error = text(entry.error)
   const answer = answerOf(outcome, false)
+  const failure = status === 'failed' ? error : undefined
   if (!expanded) {
     let tail: string
-    if (status === 'failed' && error !== undefined) tail = theme.fg('error', firstLine(error))
+    if (failure !== undefined) tail = theme.fg('muted', cause(failure))
     else if (answer !== undefined) tail = theme.fg('muted', resultSummary(answer))
-    else tail = theme.fg('dim', error === undefined ? '…' : firstLine(error))
-    // The hint sits at the right edge; the summary is cut before it.
-    const hint = theme.fg('dim', hints.keyText(EXPAND))
-    const summary = truncateToWidth(`${theme.fg('dim', '└ ')}${tail}`, Math.max(1, width - visibleWidth(hint) - 3), '…')
-    const line = summary + ' '.repeat(Math.max(3, width - visibleWidth(summary) - visibleWidth(hint))) + hint
-    return [new Text([...header, truncateToWidth(line, width, '…')].join('\n'), 0, 0)]
+    else tail = theme.fg('dim', error === undefined ? '…' : cause(error))
+    const header = hinted(name, theme.fg('dim', `${hints.keyText(EXPAND)} per i dettagli`), width)
+    const summary = truncateToWidth(`${theme.fg('dim', '└ ')}${tail}`, width, '…')
+    return [new Text([header, meta, summary].join('\n'), 0, 0)]
   }
-  const parts: Component[] = [new Text(header.join('\n'), 0, 0), new Spacer(1)]
-  parts.push(new Text(theme.fg('muted', 'Child work'), 2, 0), new Text(trailLines(theme, outcome).join('\n'), 2, 0), new Spacer(1))
-  parts.push(new Text(theme.fg('muted', 'Answer'), 2, 0))
-  if (answer === undefined) parts.push(new Text(error === undefined ? theme.fg('dim', '…') : theme.fg('error', error), 2, 0))
-  else {
+  const parts: Component[] = [new Text([name, meta].join('\n'), 0, 0), new Spacer(1)]
+  if (text(outcome.facts.sessionFile) !== undefined)
+    parts.push(new Text(theme.fg('muted', 'Child work'), 2, 0), new Text(trailLines(theme, outcome).join('\n'), 2, 0), new Spacer(1))
+  if (answer !== undefined) {
     const lines = answer.split('\n')
     const shown = lines.slice(0, ANSWER_LINES).map(line => theme.fg('text', line))
     if (lines.length > ANSWER_LINES) shown.push(theme.fg('dim', `… ${lines.length - ANSWER_LINES} righe in più`))
-    parts.push(new Text(shown.join('\n'), 2, 0))
+    parts.push(new Text(theme.fg('muted', 'Answer'), 2, 0), new Text(shown.join('\n'), 2, 0))
   }
+  if (error !== undefined) {
+    if (answer !== undefined) parts.push(new Spacer(1))
+    parts.push(new Text(theme.fg('muted', 'Error'), 2, 0), new Text(theme.fg('text', error.trim()), 2, 0))
+  }
+  if (answer === undefined && error === undefined) parts.push(new Text(theme.fg('muted', 'Answer'), 2, 0), new Text(theme.fg('dim', '…'), 2, 0))
   return parts
 }
 
@@ -366,7 +398,9 @@ function commandRow(theme: Theme, { entry, facts }: Outcome, expanded: boolean, 
     `${hints.keyText(EXPAND)} per l'output`,
   ]
   const lines = [`${mark} ${theme.fg('toolTitle', theme.bold(name))}${theme.fg('dim', `  ${meta.join(' · ')}`)}`]
-  if (text(entry.error) !== undefined) lines.push(theme.fg('error', `  ${firstLine(text(entry.error)!)}`))
+  const error = text(entry.error)
+  if (error !== undefined)
+    lines.push(`${theme.fg('dim', '└ ')}${expanded ? theme.fg('text', error.trim()) : theme.fg('muted', cause(error))}`)
   if (expanded)
     for (const log of Array.isArray(entry.logs) ? entry.logs.filter(isObject) : [])
       if (log.available === true && typeof log.text === 'string' && log.text !== '')
@@ -397,7 +431,7 @@ class OutcomeView implements Component {
   render(width: number): string[] {
     const key = this.key()
     if (this.cache?.width === width && this.cache.key === key) return this.cache.lines
-    const box = new Box(1, 1, line => this.theme.bg('customMessageBg', line))
+    const box = new Box(1, 1, panel(this.theme))
     this.outcomes.forEach((outcome, index) => {
       if (index > 0) box.addChild(new Spacer(1))
       if (outcome.entry.kind === 'process') box.addChild(commandRow(this.theme, outcome, this.expanded, this.hints))
