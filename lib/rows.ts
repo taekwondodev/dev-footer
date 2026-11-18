@@ -1,7 +1,8 @@
-// Transcript rows for dev's `work` calls and `dev/work-outcome` messages, drawn from the
-// call arguments and `details` only, never from model-visible content. A delegation is one
-// static launch row; an outcome is one block per child with its tool trail and answer on
-// ctrl+o; other actions and command outcomes are one compact row each.
+// Transcript rows for dev's `work` calls and its `dev/work-outcome` and `dev/work-quiet`
+// messages, drawn from the call arguments and `details` only, never from model-visible
+// content. A delegation is one static launch row; an outcome is one block per child with its
+// tool trail and answer on ctrl+o; other actions, command outcomes and quiet commands are one
+// compact row each.
 import type { MessageRenderer, Theme, ToolRenderers } from '@earendil-works/pi-coding-agent'
 import { Box, type Component, Spacer, Text, truncateToWidth, wrapTextWithAnsi } from '@earendil-works/pi-tui'
 import {
@@ -382,30 +383,79 @@ function childBlock(theme: Theme, outcome: Outcome, expanded: boolean, hints: Hi
   return parts
 }
 
+// A command is named by its text when an earlier `work process` row taught it, otherwise by its task.
+const commandName = (entry: Fields): string => {
+  const id = text(entry.id)
+  const command = id === undefined ? undefined : known.get(id)?.command
+  return command === undefined ? `$ ${taskText(text(entry.taskId) ?? '')}` : `$ ${firstLine(command)}`
+}
+
+const outputOf = (entry: Fields): { readonly stream: string; readonly text: string }[] =>
+  (Array.isArray(entry.logs) ? entry.logs.filter(isObject) : []).flatMap(log =>
+    log.available === true && typeof log.text === 'string' && log.text !== '' ? [{ stream: String(log.stream), text: log.text }] : [],
+  )
+
+// A command's row: its name and facts, with the hint at the right edge while ctrl+o has
+// something to add; under it the cause of its error, and on ctrl+o the whole error and its
+// output. Lines are rebuilt only when the width changes.
+class CommandRow implements Component {
+  private readonly left: string
+  private readonly hint: string
+  private readonly details: Text
+  private cache: { readonly width: number; readonly lines: string[] } | undefined
+
+  constructor(theme: Theme, mark: string, entry: Fields, meta: readonly string[], expanded: boolean, hints: Hints) {
+    const output = outputOf(entry)
+    const error = text(entry.error)
+    this.left = `${mark} ${theme.fg('toolTitle', theme.bold(commandName(entry)))}${meta.length === 0 ? '' : theme.fg('dim', `  ${meta.join(' · ')}`)}`
+    this.hint = expanded || (output.length === 0 && error === undefined) ? '' : theme.fg('dim', `${hints.keyText(EXPAND)} per l'output`)
+    const lines: string[] = []
+    if (error !== undefined)
+      lines.push(`${theme.fg('dim', '└ ')}${expanded ? theme.fg('text', error.trim()) : theme.fg('muted', cause(error))}`)
+    if (expanded)
+      for (const log of output)
+        lines.push('', theme.fg('muted', `  ${log.stream}`), ...log.text.trimEnd().split('\n').map(row => theme.fg('toolOutput', `  ${row}`)))
+    this.details = new Text(lines.join('\n'), 0, 0)
+  }
+
+  render(width: number): string[] {
+    if (this.cache?.width === width) return this.cache.lines
+    const header = this.hint === '' ? wrapTextWithAnsi(this.left, Math.max(1, width)) : [hinted(this.left, this.hint, width)]
+    const lines = [...header, ...this.details.render(width)]
+    this.cache = { width, lines }
+    return lines
+  }
+
+  invalidate(): void {
+    this.cache = undefined
+    this.details.invalidate()
+  }
+}
+
 function commandRow(theme: Theme, { entry, facts }: Outcome, expanded: boolean, hints: Hints): Component {
   const status = statusOf(entry.status)
   const exitCode = number(entry.exitCode)
   const failed = status === 'failed' || (exitCode !== undefined && exitCode !== 0)
   const mark = status === 'completed' && failed ? theme.fg('error', '✗') : glyph(theme, status)
-  const id = text(entry.id)
-  const command = id === undefined ? undefined : known.get(id)?.command
-  const name = command === undefined ? `$ ${taskText(text(entry.taskId) ?? '')}` : `$ ${firstLine(command)}`
   const started = number(facts.startedAt)
   const completed = number(facts.completedAt)
   const meta = [
     ...(exitCode === undefined ? [] : [`exit ${exitCode}`]),
     ...(started === undefined || completed === undefined ? [] : [shortDuration(completed - started)]),
-    `${hints.keyText(EXPAND)} per l'output`,
   ]
-  const lines = [`${mark} ${theme.fg('toolTitle', theme.bold(name))}${theme.fg('dim', `  ${meta.join(' · ')}`)}`]
-  const error = text(entry.error)
-  if (error !== undefined)
-    lines.push(`${theme.fg('dim', '└ ')}${expanded ? theme.fg('text', error.trim()) : theme.fg('muted', cause(error))}`)
-  if (expanded)
-    for (const log of Array.isArray(entry.logs) ? entry.logs.filter(isObject) : [])
-      if (log.available === true && typeof log.text === 'string' && log.text !== '')
-        lines.push('', theme.fg('muted', `  ${String(log.stream)}`), ...log.text.trimEnd().split('\n').map(row => theme.fg('toolOutput', `  ${row}`)))
-  return new Text(lines.join('\n'), 0, 0)
+  return new CommandRow(theme, mark, entry, meta, expanded, hints)
+}
+
+// A quiet command is still running and has printed nothing for a while. Its row has the shape
+// of a command's outcome, opened by the list's warning mark since no status changed; the times
+// are the notice's, as the model read them. ctrl+o shows its latest output.
+function quietRow(theme: Theme, entry: Fields, expanded: boolean, hints: Hints): Component {
+  const running = number(entry.runningSeconds)
+  const meta = [
+    `quiet ${shortDuration(number(entry.quietSeconds)! * 1000)}`,
+    ...(running === undefined ? [] : [`running ${shortDuration(running * 1000)}`]),
+  ]
+  return new CommandRow(theme, theme.fg('warning', theme.bold('!')), entry, meta, expanded, hints)
 }
 
 // Lines are rebuilt only when the width or a session read changes; render() reads memory only.
@@ -455,4 +505,21 @@ export const outcomeRenderer: MessageRenderer = (message, options, theme) => {
     if (path !== undefined && needsSession(outcome, options.expanded)) sessionRead(path)
   }
   return new OutcomeView(outcomes, options.expanded, theme, options)
+}
+
+// A notice without its times is not one this renderer knows: Pi draws its content instead.
+const quietOf = (details: unknown): Fields[] =>
+  isObject(details) && Array.isArray(details.quiet)
+    ? details.quiet.filter(isObject).filter(entry => number(entry.quietSeconds) !== undefined)
+    : []
+
+export const quietRenderer: MessageRenderer = (message, options, theme) => {
+  const quiet = quietOf(plainDeep(message.details))
+  if (quiet.length === 0) return undefined
+  const box = new Box(1, 1, panel(theme))
+  quiet.forEach((entry, index) => {
+    if (index > 0) box.addChild(new Spacer(1))
+    box.addChild(quietRow(theme, entry, options.expanded, options))
+  })
+  return box
 }
