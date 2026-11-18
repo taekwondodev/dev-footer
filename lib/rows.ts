@@ -43,19 +43,19 @@ interface Hints {
   readonly keyText: (binding: typeof EXPAND) => string
 }
 
-// What earlier rows taught about an attempt, so later rows can name it by id.
+// What earlier rows taught about a run, so later rows can name it by id.
 interface Known {
   readonly role: Role
   readonly taskId: string
   readonly command?: string
 }
 const known = new Map<string, Known>()
-const KNOWN_ATTEMPTS = 512
+const KNOWN_RUNS = 512
 
 const remember = (id: string, value: Known): void => {
   known.delete(id)
   known.set(id, value)
-  while (known.size > KNOWN_ATTEMPTS) known.delete(known.keys().next().value!)
+  while (known.size > KNOWN_RUNS) known.delete(known.keys().next().value!)
 }
 
 const firstLine = (value: string): string => value.split('\n').find(line => line.trim() !== '')?.trim() ?? ''
@@ -166,23 +166,23 @@ function renderCall(args: unknown, theme: Theme, state: LaunchState): Component 
   }
 }
 
-const attemptState = (theme: Theme, attempt: Fields): string => {
-  const status = statusOf(attempt.status)
-  const exitCode = number(attempt.exitCode)
+const runState = (theme: Theme, run: Fields): string => {
+  const status = statusOf(run.status)
+  const exitCode = number(run.exitCode)
   const parts = [STATUS_WORDS[status]]
   if (exitCode !== undefined) parts.push(`exit ${exitCode}`)
-  const error = text(attempt.error)
+  const error = text(run.error)
   return `${glyph(theme, status)} ${theme.fg('dim', parts.join(' · '))}${error === undefined ? '' : `  ${theme.fg('muted', cause(error))}`}`
 }
 
-function launchMeta(theme: Theme, attempt: Fields): string {
-  const requested = isObject(attempt.requested) ? attempt.requested : {}
-  const model = text(requested.model) ?? text(attempt.model)
+function launchMeta(theme: Theme, run: Fields): string {
+  const requested = isObject(run.requested) ? run.requested : {}
+  const model = text(requested.model) ?? text(run.model)
   const effort = text(requested.effort)
   const parts = [
     ...(model === undefined ? [] : [theme.fg('dim', shortModel(model))]),
     ...(effort === undefined ? [] : [effortText(theme, effort)]),
-    ...(text(attempt.access) === undefined ? [] : [theme.fg('dim', text(attempt.access)!)]),
+    ...(text(run.access) === undefined ? [] : [theme.fg('dim', text(run.access)!)]),
   ]
   return parts.join(theme.fg('dim', ' · '))
 }
@@ -190,26 +190,26 @@ function launchMeta(theme: Theme, attempt: Fields): string {
 function resultLines(args: Fields, details: Fields, expanded: boolean, theme: Theme, hints: Hints, state: LaunchState): string[] {
   const action = text(args.action)
   const expand = theme.fg('dim', `   ${hints.keyText(EXPAND)} per leggere`)
-  if (details.kind === 'attempt' && isObject(details.attempt)) {
-    const { attempt } = details
-    const id = text(attempt.id)
+  if (details.kind === 'run' && isObject(details.run)) {
+    const { run } = details
+    const id = text(run.id)
     if (id !== undefined && action !== 'cancel')
       remember(id, {
-        role: roleOf(attempt),
-        taskId: text(attempt.taskId) ?? '',
+        role: roleOf(run),
+        taskId: text(run.taskId) ?? '',
         ...(action === 'process' && text(args.command) !== undefined ? { command: text(args.command)! } : {}),
       })
     if (action === 'delegate') {
-      state.launch = launchMeta(theme, attempt)
+      state.launch = launchMeta(theme, run)
       return []
     }
     if (action === 'process') return []
-    return [attemptState(theme, attempt)]
+    return [runState(theme, run)]
   }
-  if (details.kind === 'snapshot' && isObject(details.snapshot)) {
-    const records = Array.isArray(details.snapshot.records) ? details.snapshot.records.filter(isObject) : []
-    const summary = records.length === 0 ? 'no attempts' : counts(records.map(record => statusOf(record.status)))
-    const blocked = details.snapshot.agentsBlocked === true ? theme.fg('warning', ' · new agents blocked') : ''
+  if (details.kind === 'runs' && isObject(details.runs)) {
+    const records = Array.isArray(details.runs.records) ? details.runs.records.filter(isObject) : []
+    const summary = records.length === 0 ? 'no runs' : counts(records.map(record => statusOf(record.status)))
+    const blocked = details.runs.agentsBlocked === true ? theme.fg('warning', ' · new agents blocked') : ''
     const lines = [theme.fg('dim', summary) + blocked]
     if (expanded)
       for (const record of records)
@@ -220,7 +220,7 @@ function resultLines(args: Fields, details: Fields, expanded: boolean, theme: Th
     const { inspection } = details
     const id = text(inspection.id)
     if (id !== undefined && !known.has(id)) remember(id, { role: roleOf(inspection), taskId: text(inspection.taskId) ?? '' })
-    const lines = [attemptState(theme, inspection)]
+    const lines = [runState(theme, inspection)]
     if (expanded)
       for (const [label, value] of [
         ['task', text(inspection.workflowTaskId)],

@@ -67,7 +67,7 @@ const SWEEP_STATUS: Record<string, readonly [ThemeColor, string]> = {
 
 const VIEW_STATUS: Record<string, readonly [ThemeColor, string]> = {
   active: ['accent', 'active'],
-  'preserved-for-resume': ['muted', 'resumable'],
+  paused: ['muted', 'paused'],
   blocked: ['warning', 'blocked'],
   'review-required': ['error', 'review'],
   released: ['dim', 'released'],
@@ -251,8 +251,8 @@ function viewRow(theme: Theme, view: Fields, expanded: boolean, current: unknown
     if (text(view.reason) !== undefined) details.push(detail(oneLine(text(view.reason)!)))
     if (text(view.nextAction) !== undefined) details.push(detail(`next: ${oneLine(text(view.nextAction)!)}`))
     for (const use of objects(view.uses)) {
-      const attempt = isObject(use.execution) ? text(use.execution.attemptId) : undefined
-      details.push(detail(`use ${String(use.access)} · ${String(use.stage)}${attempt === undefined ? '' : ` · attempt ${shortId(attempt)}`}`))
+      const run = isObject(use.execution) ? text(use.execution.attemptId) : undefined
+      details.push(detail(`use ${String(use.access)} · ${String(use.stage)}${run === undefined ? '' : ` · run ${shortId(run)}`}`))
     }
     for (const item of objects(view.pending)) details.push(detail(`pending ${String(item.kind)} · ${String(item.stage)}`, 'warning'))
   }
