@@ -112,7 +112,7 @@ class LaunchRow implements Component {
 }
 
 // A refused call: its cause after the failure glyph, the whole message on ctrl+o.
-class ErrorRow implements Component {
+export class ErrorRow implements Component {
   constructor(
     private readonly message: string,
     private readonly expanded: boolean,

@@ -1,6 +1,6 @@
 // dev-footer: everything below the editor and the transcript rows for dev's background
 // work. The subagent list is a below-editor widget fed by dev's `dev/work-view` event; the
-// HUD replaces Pi's footer; the `work`, `dev/work-outcome`, `dev/work-quiet` and workspace renderers read `details`.
+// HUD replaces Pi's footer; the `work`, `read_url`, `dev/work-outcome`, `dev/work-quiet` and workspace renderers read `details`.
 //
 // Pi renders on every frame, so render() does no I/O: the list draws the latest view,
 // the HUD draws repository facts read in the background after each turn (one read at a
@@ -13,6 +13,7 @@ import { getCapabilities, type TUI } from '@earendil-works/pi-tui'
 import { SPINNER, SPINNER_INTERVAL_MS } from './lib/header.ts'
 import { type CacheClock, hudRows } from './lib/hud.ts'
 import { animates, listRows } from './lib/list.ts'
+import { readUrlRenderers } from './lib/read-url-rows.ts'
 import { type PullRequest, readPullRequest, readRepoFacts, type RepoFacts } from './lib/repo.ts'
 import { outcomeRenderer, quietRenderer, workRenderers } from './lib/rows.ts'
 import { onSessionRead } from './lib/session.ts'
@@ -78,7 +79,10 @@ export default function (pi: ExtensionAPI): void {
   })
 
   onSessionRead(() => (requestListRender ?? requestFooterRender)?.())
-  pi.registerToolRenderer((toolName, next) => (toolName === 'work' ? workRenderers() : next()))
+  pi.registerToolRenderer((toolName, next) => {
+    if (toolName === 'work') return workRenderers()
+    return toolName === 'read_url' ? readUrlRenderers() : next()
+  })
   pi.registerMessageRenderer('dev/work-outcome', outcomeRenderer)
   pi.registerMessageRenderer('dev/work-quiet', quietRenderer)
   pi.registerMessageRenderer('dev/workspace', workspaceMessageRenderer)

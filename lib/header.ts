@@ -43,6 +43,13 @@ export const panel =
   (line: string): string =>
     theme.bg('customMessageBg', line.replaceAll(RESET, RESET + theme.getBgAnsi('customMessageBg')))
 
+// A tool block's background follows its state, as Pi paints it. A row cut inside the block ends
+// with the same full reset, so the block's background opens again after each one.
+export const toolBackdrop = (theme: Theme, state: { readonly isPartial: boolean; readonly isError: boolean }) => {
+  const open = theme.getBgAnsi(state.isPartial ? 'toolPendingBg' : state.isError ? 'toolErrorBg' : 'toolSuccessBg')
+  return (line: string): string => line.replaceAll(RESET, RESET + open)
+}
+
 // A header with its hint at the right edge; the header is cut before the hint. Without a hint
 // the header is left whole, for the caller to wrap.
 export function hinted(left: string, hint: string, width: number): string {
