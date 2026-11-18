@@ -136,10 +136,24 @@ function table(rows: readonly Row[]): Line[] {
 }
 
 const MOMENTS: Record<string, string> = {
-  allocation: 'before an allocation',
-  replacement: 'at a conversation replacement',
+  allocation: 'before creating a worktree',
+  replacement: 'when switching conversations',
   quit: 'at quit',
 }
+
+// Dev's words for a use's stage and a pending operation, as `/workspace` prints them; a value
+// this table does not know is shown as dev sent it.
+const USE_STAGES: Record<string, string> = {
+  authorized: 'permitted',
+  'operation-started': 'running',
+  'launch-intent': 'launch-planned',
+  spawned: 'starting',
+  started: 'running',
+  observed: 'running',
+  quiescent: 'ended',
+}
+const PENDING_KINDS: Record<string, string> = { handoff: 'switch', allocation: 'create' }
+const worded = (table: Record<string, string>, value: unknown): string => table[String(value)] ?? String(value)
 
 interface SweepRow extends Row {
   readonly outcome: string
@@ -173,7 +187,7 @@ function sweepRow(theme: Theme, row: Fields): SweepRow {
     case 'task-failure':
       return base('review-required', true, '', text(row.reason))
     default:
-      return { ...base('review-required', true, theme.fg('text', 'sweep'), text(row.reason)), trail: '' }
+      return { ...base('review-required', true, theme.fg('text', 'repository'), text(row.reason)), trail: '' }
   }
 }
 
@@ -240,7 +254,7 @@ function sweepLines(theme: Theme, receipt: Fields, expanded: boolean, hints: Hin
   const moment = MOMENTS[String(receipt.moment)]
   const summary = [...(moment === undefined ? [] : [moment]), counts(all)].join(' · ')
   const hint = shown.length < all.length || all.some(row => row.reason !== undefined) ? hintOf(expanded, hints) : ''
-  return [header(theme, 'workspace sweep', theme.fg('muted', summary), hint), ...table(shown)]
+  return [header(theme, 'automatic cleanup', theme.fg('muted', summary), hint), ...table(shown)]
 }
 
 function viewRow(theme: Theme, view: Fields, expanded: boolean, current: unknown): Row {
@@ -252,9 +266,10 @@ function viewRow(theme: Theme, view: Fields, expanded: boolean, current: unknown
     if (text(view.nextAction) !== undefined) details.push(detail(`next: ${oneLine(text(view.nextAction)!)}`))
     for (const use of objects(view.uses)) {
       const run = isObject(use.execution) ? text(use.execution.attemptId) : undefined
-      details.push(detail(`use ${String(use.access)} · ${String(use.stage)}${run === undefined ? '' : ` · run ${shortId(run)}`}`))
+      details.push(detail(`use ${String(use.access)} · ${worded(USE_STAGES, use.stage)}${run === undefined ? '' : ` · run ${shortId(run)}`}`))
     }
-    for (const item of objects(view.pending)) details.push(detail(`pending ${String(item.kind)} · ${String(item.stage)}`, 'warning'))
+    for (const item of objects(view.pending))
+      details.push(detail(`pending ${worded(PENDING_KINDS, item.kind)} · ${item.stage === 'intent' ? 'planned' : String(item.stage)}`, 'warning'))
   }
   return {
     status: statusOf(theme, VIEW_STATUS, view.outcome),
@@ -300,19 +315,19 @@ function reportLines(theme: Theme, report: Fields, expanded: boolean, hints: Hin
         if (text(completion.reason) !== undefined) details.push(detail(oneLine(text(completion.reason)!)))
         for (const reason of strings(assessment.reasons)) details.push(detail(`- ${oneLine(reason)}`))
         const target = isObject(assessment.target) ? text(assessment.target.description) : undefined
-        if (target !== undefined) details.push(detail(`target: ${oneLine(target)}`))
-        for (const item of strings(assessment.residual)) details.push(detail(`residual: ${oneLine(item)}`, 'warning'))
+        if (target !== undefined) details.push(detail(`destination branch: ${oneLine(target)}`))
+        for (const item of strings(assessment.residual)) details.push(detail(`remaining: ${oneLine(item)}`, 'warning'))
         for (const action of strings(assessment.nextActions)) details.push(detail(`next: ${oneLine(action)}`))
       }
       return {
         status: status(theme, finished ? 'success' : 'muted', finished ? 'finished' : 'retained'),
         place: place(theme, assessment),
-        trail: theme.fg('dim', String(finished ? completion.rule : completion.retained)),
+        trail: theme.fg('dim', String(finished ? completion.rule : completion.retained === 'residue-unreadable' ? 'files-unreadable' : completion.retained)),
         details,
       }
     })
     return [
-      header(theme, 'workspace check', `${task(theme, report.taskId)}${GAP}${theme.fg('dim', 'changes nothing')}`, hint),
+      header(theme, 'workspace check', `${task(theme, report.taskId)}${GAP}${theme.fg('dim', 'read-only')}`, hint),
       ...(rows.length === 0 ? [emptyRow(theme)] : table(rows)),
     ]
   }
