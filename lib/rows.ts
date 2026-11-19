@@ -1,4 +1,4 @@
-// Transcript rows for dev's `work` calls and its `dev/work-outcome`, `dev/work-quiet`,
+// Transcript rows for dev's `work` calls and its `dev/work-result`, `dev/work-quiet`,
 // `dev/work-inspection` and `dev/work-recovery` messages, drawn from the call arguments and
 // `details` only, never from model-visible content. A delegation is one static launch row; an
 // outcome is one block per child with its tool trail and answer on ctrl+o; other actions,
@@ -44,11 +44,9 @@ interface Hints {
 }
 
 // What earlier rows taught about a run, so later rows can name it by id.
-interface Known {
-  readonly role: Role
-  readonly taskId: string
-  readonly command?: string
-}
+type Known =
+  | { readonly kind: 'agent'; readonly role: Role; readonly taskId: string }
+  | { readonly kind: 'process'; readonly title: string }
 const known = new Map<string, Known>()
 const KNOWN_RUNS = 512
 
@@ -67,13 +65,20 @@ const invokedSkill = (prompt: unknown): string | undefined => {
 
 const roleOf = (fields: Fields): Role => ({
   ...(text(fields.invokedSkill) === undefined ? {} : { skill: text(fields.invokedSkill)! }),
-  coordinator: fields.coordinator === true,
+  coordinator: fields.coordinate === true,
   ...(text(fields.access) === undefined ? {} : { access: text(fields.access)! }),
 })
 
+const commandTitle = (taskId: string, command?: string): string => `$ ${command === undefined ? taskText(taskId) : firstLine(command)}`
+
+const knownRun = (run: Fields, command?: string): Known => {
+  const taskId = text(run.taskId) ?? ''
+  return run.kind === 'process' ? { kind: 'process', title: commandTitle(taskId, command) } : { kind: 'agent', taskId, role: roleOf(run) }
+}
+
 const subject = (theme: Theme, entry: Known | undefined, id: unknown): string => {
   if (entry === undefined) return theme.fg('muted', typeof id === 'string' ? id.slice(0, 8) : '')
-  if (entry.command !== undefined) return theme.fg('muted', `$ ${firstLine(entry.command)}`)
+  if (entry.kind === 'process') return theme.fg('muted', entry.title)
   return `${theme.fg('accent', title(entry.role))} ${theme.fg('muted', taskText(entry.taskId))}`
 }
 
@@ -166,13 +171,16 @@ function renderCall(args: unknown, theme: Theme, state: LaunchState): Component 
   }
 }
 
+const exitGlyph = (theme: Theme, status: Status, exitCode: number | undefined): string =>
+  status === 'completed' && exitCode !== undefined && exitCode !== 0 ? theme.fg('error', '✗') : glyph(theme, status)
+
 const runState = (theme: Theme, run: Fields): string => {
   const status = statusOf(run.status)
   const exitCode = number(run.exitCode)
   const parts = [STATUS_WORDS[status]]
   if (exitCode !== undefined) parts.push(`exit ${exitCode}`)
   const error = text(run.error)
-  return `${glyph(theme, status)} ${theme.fg('dim', parts.join(' · '))}${error === undefined ? '' : `  ${theme.fg('muted', cause(error))}`}`
+  return `${exitGlyph(theme, status, exitCode)} ${theme.fg('dim', parts.join(' · '))}${error === undefined ? '' : `  ${theme.fg('muted', cause(error))}`}`
 }
 
 function launchMeta(theme: Theme, run: Fields): string {
@@ -187,6 +195,15 @@ function launchMeta(theme: Theme, run: Fields): string {
   return parts.join(theme.fg('dim', ' · '))
 }
 
+const inspectedRun = (details: Fields): Fields | undefined =>
+  details.kind === 'inspection' && isObject(details.inspection) && isObject(details.inspection.run) ? details.inspection.run : undefined
+
+const inspectionFacts = (run: Fields) => [
+  ['task', text(run.workflowTaskId)],
+  ['worktree', isObject(run.worktree) ? text(run.worktree.path) : undefined],
+  ['cwd', text(run.cwd)],
+] as const
+
 function resultLines(args: Fields, details: Fields, expanded: boolean, theme: Theme, hints: Hints, state: LaunchState): string[] {
   const action = text(args.action)
   const expand = theme.fg('dim', `   ${hints.keyText(EXPAND)} per leggere`)
@@ -194,11 +211,7 @@ function resultLines(args: Fields, details: Fields, expanded: boolean, theme: Th
     const { run } = details
     const id = text(run.id)
     if (id !== undefined && action !== 'cancel')
-      remember(id, {
-        role: roleOf(run),
-        taskId: text(run.taskId) ?? '',
-        ...(action === 'process' && text(args.command) !== undefined ? { command: text(args.command)! } : {}),
-      })
+      remember(id, knownRun(run, action === 'process' ? text(args.command) : undefined))
     if (action === 'delegate') {
       state.launch = launchMeta(theme, run)
       return []
@@ -213,20 +226,16 @@ function resultLines(args: Fields, details: Fields, expanded: boolean, theme: Th
     const lines = [theme.fg('dim', summary) + blocked]
     if (expanded)
       for (const record of records)
-        lines.push(`  ${glyph(theme, statusOf(record.status))} ${subject(theme, known.get(String(record.id)) ?? { role: roleOf(record), taskId: text(record.taskId) ?? '' }, record.id)}`)
+        lines.push(`  ${exitGlyph(theme, statusOf(record.status), number(record.exitCode))} ${subject(theme, known.get(String(record.id)) ?? knownRun(record), record.id)}`)
     return lines
   }
-  if (details.kind === 'inspection' && isObject(details.inspection)) {
-    const { inspection } = details
-    const id = text(inspection.id)
-    if (id !== undefined && !known.has(id)) remember(id, { role: roleOf(inspection), taskId: text(inspection.taskId) ?? '' })
-    const lines = [runState(theme, inspection)]
+  const inspected = inspectedRun(details)
+  if (inspected !== undefined) {
+    const id = text(inspected.id)
+    if (id !== undefined && !known.has(id)) remember(id, knownRun(inspected))
+    const lines = [runState(theme, inspected)]
     if (expanded)
-      for (const [label, value] of [
-        ['task', text(inspection.workflowTaskId)],
-        ['worktree', isObject(inspection.worktree) ? text(inspection.worktree.path) : undefined],
-        ['cwd', text(inspection.cwd)],
-      ] as const)
+      for (const [label, value] of inspectionFacts(inspected))
         if (value !== undefined) lines.push(theme.fg('dim', `  ${label}  ${value}`))
     return lines
   }
@@ -386,8 +395,8 @@ function childBlock(theme: Theme, outcome: Outcome, expanded: boolean, hints: Hi
 // A command is named by its text when an earlier `work process` row taught it, otherwise by its task.
 const commandName = (entry: Fields): string => {
   const id = text(entry.id)
-  const command = id === undefined ? undefined : known.get(id)?.command
-  return command === undefined ? `$ ${taskText(text(entry.taskId) ?? '')}` : `$ ${firstLine(command)}`
+  const run = id === undefined ? undefined : known.get(id)
+  return run?.kind === 'process' ? run.title : commandTitle(text(entry.taskId) ?? '')
 }
 
 const outputOf = (entry: Fields): { readonly stream: string; readonly text: string }[] =>
@@ -435,8 +444,7 @@ class CommandRow implements Component {
 function commandRow(theme: Theme, { entry, facts }: Outcome, expanded: boolean, hints: Hints): Component {
   const status = statusOf(entry.status)
   const exitCode = number(entry.exitCode)
-  const failed = status === 'failed' || (exitCode !== undefined && exitCode !== 0)
-  const mark = status === 'completed' && failed ? theme.fg('error', '✗') : glyph(theme, status)
+  const mark = exitGlyph(theme, status, exitCode)
   const started = number(facts.startedAt)
   const completed = number(facts.completedAt)
   const meta = [
@@ -550,12 +558,16 @@ export const inspectionRenderer: MessageRenderer = (message, options, theme) => 
   const details = plainDeep(message.details)
   const action = isObject(details) ? COMMAND_ACTIONS[String(details.kind)] : undefined
   if (!isObject(details) || action === undefined) return undefined
-  const subjectOf = details.kind === 'inspection' && isObject(details.inspection) ? details.inspection : details.kind === 'run' && isObject(details.run) ? details.run : undefined
+  const inspected = inspectedRun(details)
+  const subjectOf = inspected ?? (details.kind === 'run' && isObject(details.run) ? details.run : undefined)
   const args: Fields = { action, ...(subjectOf === undefined ? {} : { id: subjectOf.id }) }
   const lines = resultLines(args, details, options.expanded, theme, options, {})
   const id = text(args.id)
   const rest = id === undefined ? '' : subject(theme, known.get(id), id)
-  return new PanelRow(callLine(theme, action, rest), '', lines, theme)
+  const hint = !options.expanded && inspected !== undefined && inspectionFacts(inspected).some(([, value]) => value !== undefined)
+    ? theme.fg('dim', `${options.keyText(EXPAND)} per i dettagli`)
+    : ''
+  return new PanelRow(callLine(theme, action, rest), hint, lines, theme)
 }
 
 // Runs saved by an earlier session of this conversation: how many, and that none restarted.

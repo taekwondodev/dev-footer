@@ -1,7 +1,7 @@
-// Transcript rows for dev's workspace messages, drawn from `details`: `/workspace` answers,
+// Transcript rows for dev's `workspace` calls and messages, drawn from `details`: `/workspace` answers,
 // continued tasks and sweep receipts (`dev/workspace`), receipts
 // that changed nothing (`dev/workspace-receipt` entries), admissions refused for review
-// (`dev/workspace-refusal` entries) and switches (`dev/workspace-handoff`). A `/workspace`
+// (`dev/workspace-refusal` entries) and switches (`dev/workspace-switch`). A `/workspace`
 // answer without `details` is a sentence for the user; it is drawn whole under the title.
 // A workspace is named by its short id, and a managed worktree by `worktree <id>` instead of
 // its long path; a listed workspace also shows its head, the branch checked out there or the
@@ -9,9 +9,10 @@
 // sweep leaves out.
 import { homedir } from 'node:os'
 import { basename } from 'node:path'
-import type { EntryRenderer, MessageRenderer, Theme, ThemeColor } from '@earendil-works/pi-coding-agent'
+import type { EntryRenderer, MessageRenderer, Theme, ThemeColor, ToolRenderers } from '@earendil-works/pi-coding-agent'
 import { Box, type Component, sliceByColumn, Text, truncateToWidth, visibleWidth, wrapTextWithAnsi } from '@earendil-works/pi-tui'
-import { cause, hinted, oneLine, panel, plain, plainDeep } from './header.ts'
+import { cause, hinted, oneLine, panel, plain, plainDeep, toolBackdrop } from './header.ts'
+import { ErrorRow } from './rows.ts'
 
 type Fields = Record<string, unknown>
 const isObject = (value: unknown): value is Fields =>
@@ -150,7 +151,7 @@ const USE_STAGES: Record<string, string> = {
   'launch-intent': 'launch-planned',
   spawned: 'starting',
   started: 'running',
-  observed: 'running',
+  observed: 'observed',
   quiescent: 'ended',
 }
 const PENDING_KINDS: Record<string, string> = { handoff: 'switch', allocation: 'create' }
@@ -283,7 +284,7 @@ function viewRow(theme: Theme, view: Fields, expanded: boolean, current: unknown
   }
 }
 
-const emptyRow = (theme: Theme): string => `${INDENT}${theme.fg('dim', 'no workspace records')}`
+const emptyRow = (theme: Theme): string => `${INDENT}${theme.fg('dim', 'no checkout records')}`
 
 function reportLines(theme: Theme, report: Fields, expanded: boolean, hints: Hints): Line[] {
   const hint = hintOf(expanded, hints)
@@ -293,7 +294,7 @@ function reportLines(theme: Theme, report: Fields, expanded: boolean, hints: Hin
     const views = objects(report.views)
     const root = text(report.repositoryRoot)
     const current = isObject(report.current) ? report.current.workspaceId : undefined
-    const summary = [...(root === undefined ? [] : [shortPath(root)]), `${views.length} ${views.length === 1 ? 'workspace' : 'workspaces'}`]
+    const summary = [...(root === undefined ? [] : [shortPath(root)]), `${views.length} ${views.length === 1 ? 'checkout' : 'checkouts'}`]
     return [
       header(theme, 'workspace', theme.fg('muted', summary.join(' · ')), hint),
       ...table(views.map(view => viewRow(theme, view, expanded, current))),
@@ -346,19 +347,24 @@ class Rows implements Component {
     private readonly lines: readonly Line[],
     private readonly expanded: boolean,
     private readonly theme: Theme,
+    private readonly toolBackground?: (line: string) => string,
   ) {}
 
   render(width: number): string[] {
     if (this.cache?.width === width) return this.cache.lines
-    const box = new Box(1, 1, panel(this.theme))
-    const inner = Math.max(1, width - 2)
+    const inner = Math.max(1, width - (this.toolBackground === undefined ? 2 : 0))
     const shown = this.lines.flatMap(line => {
       if (typeof line === 'string') return [this.expanded ? line : truncateToWidth(line, inner, '…')]
       if ('hint' in line) return [hinted(line.left, line.hint, inner)]
       return hangingLines(this.theme, line, inner, this.expanded)
     })
-    box.addChild(new Text(shown.join('\n'), 0, 0))
-    const lines = box.render(width)
+    const content = new Text(shown.join('\n'), 0, 0)
+    let lines: string[]
+    if (this.toolBackground === undefined) {
+      const box = new Box(1, 1, panel(this.theme))
+      box.addChild(content)
+      lines = box.render(width)
+    } else lines = content.render(width).map(this.toolBackground)
     this.cache = { width, lines }
     return lines
   }
@@ -418,6 +424,72 @@ export const workspaceMessageRenderer: MessageRenderer = (message, options, them
   return rows(reportLines(theme, details, options.expanded, options), options.expanded, theme)
 }
 
+function toolLines(theme: Theme, data: Fields, expanded: boolean, hints: Hints): Line[] {
+  const field = (label: string, value: unknown, path = false): Hanging[] =>
+    typeof value === 'string' && value !== '' ? [labelled(theme, label, { text: value, color: 'muted', ...(path ? { path: true } : {}) })] : []
+  const result = (status: string, summary: string | undefined, more: Hanging[]): Line[] => [
+    header(theme, status, summary === undefined ? '' : theme.fg('muted', summary), more.length > 0 ? hintOf(expanded, hints) : ''),
+    ...(expanded ? more : []),
+  ]
+  if (data.resumed === 'requested' || data.resumed === 'already-here') {
+    const path = text(data.path)
+    return result(data.resumed === 'requested' ? 'switch requested' : 'already here', path === undefined ? undefined : shortPath(path), [
+      ...field('path', path, true), ...field('task', data.taskId), ...field('checkout', data.workspaceId),
+    ])
+  }
+  if (data.artifacts === 'ready') {
+    const path = text(data.path)
+    return result('ready', path === undefined ? undefined : shortPath(path), [...field('path', path, true), ...field('task', data.taskId)])
+  }
+  if (data.artifacts === 'switch-requested')
+    return result('switch requested', 'folder not created', field('reason', data.reason))
+  if (data.recorded === 'target' && isObject(data.target)) {
+    const { target } = data
+    const location = text(target.remote) ?? text(target.repository) ?? text(target.kind)
+    const ref = text(target.ref)
+    const destination = [location, ref].filter(part => part !== undefined).join(' · ')
+    const source = text(target.sourceRepository)
+    const pr = typeof target.pullRequest === 'number' ? `${source ?? ''}#${target.pullRequest}` : source
+    return result('destination branch set', destination, [
+      ...field('target', location),
+      ...field('ref', ref),
+      ...field('task', data.taskId),
+      ...field('source', pr),
+    ])
+  }
+  if (data.recorded === 'publication' && isObject(data.reference)) {
+    const ref = data.reference
+    const destination = isObject(ref.destination) ? ref.destination : {}
+    const readBack = destination.readBack === 'text-in-body' ? 'text in body' : destination.readBack === 'attachment-sha256' ? 'exact attachment' : undefined
+    return result('publication verified', text(ref.relativePath), [
+      ...field('path', ref.relativePath, true),
+      ...field('location', ref.root === 'workspace' ? 'checkout' : ref.root),
+      ...field('url', destination.url),
+      ...field('proof', readBack),
+      ...field('size', typeof ref.byteLength === 'number' ? `${ref.byteLength} bytes` : undefined),
+      ...field('task', ref.taskId),
+    ])
+  }
+  return []
+}
+
+export function workspaceToolRenderers(): ToolRenderers {
+  return {
+    renderCall: (args, theme) => {
+      const action = isObject(args) && typeof args.action === 'string' ? ` ${oneLine(args.action)}` : ''
+      return new Text(theme.bold(theme.fg('toolTitle', `workspace${action}`)), 0, 0)
+    },
+    renderResult: (result, options, theme, context) => {
+      const fallback = () => plain(contentText(result.content))
+      if (context.isError) return new ErrorRow(fallback(), options.expanded, theme, context)
+      const details = facts(result.details)
+      const lines = isObject(details) ? toolLines(theme, details, options.expanded, context) : []
+      if (lines.length === 0) return new Text(fallback(), 0, 0)
+      return new Rows(lines, options.expanded, theme, toolBackdrop(theme, context))
+    },
+  }
+}
+
 export const receiptEntryRenderer: EntryRenderer = (entry, options, theme) => {
   const data = facts(entry.data)
   if (!isObject(data) || data.kind !== 'sweep' || !isObject(data.receipt)) return undefined
@@ -452,7 +524,7 @@ const inlineCause = (reason: string): string => {
 }
 
 // A switch is one row naming where the conversation works now and why it moved; ctrl+o adds
-// the worktree's path and the whole reason. The handoff the model received repeats both and
+// the worktree's path and the whole reason. The notice the model received repeats both and
 // is not drawn.
 function switchLines(theme: Theme, details: Fields, expanded: boolean, hints: Hints): Line[] {
   const cwd = text(details.cwd)
@@ -469,7 +541,7 @@ function switchLines(theme: Theme, details: Fields, expanded: boolean, hints: Hi
   return [header(theme, title, where + why, more.length === 0 ? '' : hintOf(expanded, hints)), ...(expanded ? more : [])]
 }
 
-export const handoffRenderer: MessageRenderer = (message, options, theme) => {
+export const workspaceSwitchRenderer: MessageRenderer = (message, options, theme) => {
   const details = facts(message.details)
   if (!isObject(details) || details.kind !== 'switch') return undefined
   return rows(switchLines(theme, details, options.expanded, options), options.expanded, theme)

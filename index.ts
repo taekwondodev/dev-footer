@@ -19,7 +19,7 @@ import { inspectionRenderer, outcomeRenderer, quietRenderer, recoveryRenderer, w
 import { onSessionRead } from './lib/session.ts'
 import { cacheRemaining, type SessionStats, sessionStats } from './lib/stats.ts'
 import { asWorkView, WORK_VIEW_EVENT, type WorkView } from './lib/view.ts'
-import { handoffRenderer, receiptEntryRenderer, refusalEntryRenderer, workspaceMessageRenderer } from './lib/workspace-rows.ts'
+import { receiptEntryRenderer, refusalEntryRenderer, workspaceMessageRenderer, workspaceSwitchRenderer, workspaceToolRenderers } from './lib/workspace-rows.ts'
 
 export const LIST_WIDGET = 'dev-footer/subagents'
 const PULL_REQUEST_TTL_MS = 60_000
@@ -81,14 +81,15 @@ export default function (pi: ExtensionAPI): void {
   onSessionRead(() => (requestListRender ?? requestFooterRender)?.())
   pi.registerToolRenderer((toolName, next) => {
     if (toolName === 'work') return workRenderers()
+    if (toolName === 'workspace') return workspaceToolRenderers()
     return toolName === 'read_url' ? readUrlRenderers() : next()
   })
-  pi.registerMessageRenderer('dev/work-outcome', outcomeRenderer)
+  pi.registerMessageRenderer('dev/work-result', outcomeRenderer)
   pi.registerMessageRenderer('dev/work-quiet', quietRenderer)
   pi.registerMessageRenderer('dev/work-inspection', inspectionRenderer)
   pi.registerMessageRenderer('dev/work-recovery', recoveryRenderer)
   pi.registerMessageRenderer('dev/workspace', workspaceMessageRenderer)
-  pi.registerMessageRenderer('dev/workspace-handoff', handoffRenderer)
+  pi.registerMessageRenderer('dev/workspace-switch', workspaceSwitchRenderer)
   pi.registerEntryRenderer('dev/workspace-receipt', receiptEntryRenderer)
   pi.registerEntryRenderer('dev/workspace-refusal', refusalEntryRenderer)
 
