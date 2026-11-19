@@ -1,8 +1,8 @@
-// Transcript rows for dev's `work` calls and its `dev/work-outcome` and `dev/work-quiet`
-// messages, drawn from the call arguments and `details` only, never from model-visible
-// content. A delegation is one static launch row; an outcome is one block per child with its
-// tool trail and answer on ctrl+o; other actions, command outcomes and quiet commands are one
-// compact row each.
+// Transcript rows for dev's `work` calls and its `dev/work-outcome`, `dev/work-quiet`,
+// `dev/work-inspection` and `dev/work-recovery` messages, drawn from the call arguments and
+// `details` only, never from model-visible content. A delegation is one static launch row; an
+// outcome is one block per child with its tool trail and answer on ctrl+o; other actions,
+// command outcomes, quiet commands, `/work` answers and recovered runs are one compact row each.
 import type { MessageRenderer, Theme, ToolRenderers } from '@earendil-works/pi-coding-agent'
 import { Box, type Component, Spacer, Text, truncateToWidth, wrapTextWithAnsi } from '@earendil-works/pi-tui'
 import {
@@ -522,4 +522,61 @@ export const quietRenderer: MessageRenderer = (message, options, theme) => {
     box.addChild(quietRow(theme, entry, options.expanded, options))
   })
   return box
+}
+
+// A titled panel row: the header with its hint at the right edge, then the lines under it.
+class PanelRow implements Component {
+  constructor(
+    private readonly header: string,
+    private readonly hint: string,
+    private readonly lines: readonly string[],
+    private readonly theme: Theme,
+  ) {}
+
+  render(width: number): string[] {
+    const box = new Box(1, 1, panel(this.theme))
+    box.addChild(new Text([hinted(this.header, this.hint, Math.max(1, width - 2)), ...this.lines].join('\n'), 0, 0))
+    return box.render(width)
+  }
+
+  invalidate(): void {}
+}
+
+// `/work` answers carry the tool's result; the action is read back from its kind, so the row is
+// the one the `work` tool draws for the same call.
+const COMMAND_ACTIONS: Record<string, string> = { runs: 'list', inspection: 'inspect', log: 'inspect', run: 'cancel', dispatch: 'dispatch' }
+
+export const inspectionRenderer: MessageRenderer = (message, options, theme) => {
+  const details = plainDeep(message.details)
+  const action = isObject(details) ? COMMAND_ACTIONS[String(details.kind)] : undefined
+  if (!isObject(details) || action === undefined) return undefined
+  const subjectOf = details.kind === 'inspection' && isObject(details.inspection) ? details.inspection : details.kind === 'run' && isObject(details.run) ? details.run : undefined
+  const args: Fields = { action, ...(subjectOf === undefined ? {} : { id: subjectOf.id }) }
+  const lines = resultLines(args, details, options.expanded, theme, options, {})
+  const id = text(args.id)
+  const rest = id === undefined ? '' : subject(theme, known.get(id), id)
+  return new PanelRow(callLine(theme, action, rest), '', lines, theme)
+}
+
+// Runs saved by an earlier session of this conversation: how many, and that none restarted.
+// ctrl+o lists them, and each run whose record could not be read with its cause.
+export const recoveryRenderer: MessageRenderer = (message, options, theme) => {
+  const details = plainDeep(message.details)
+  if (!isObject(details)) return undefined
+  const runs = Array.isArray(details.attempts) ? details.attempts.filter((id): id is string => typeof id === 'string') : []
+  const unreadable = Array.isArray(details.unavailable) ? details.unavailable.filter(isObject) : []
+  if (runs.length === 0 && unreadable.length === 0) return undefined
+  const summary = [
+    ...(runs.length === 0 ? [] : [`${runs.length} saved ${runs.length === 1 ? 'run' : 'runs'}`]),
+    ...(unreadable.length === 0 ? [] : [`${unreadable.length} unreadable`]),
+    'none restarted',
+  ].join(' · ')
+  const lines = options.expanded
+    ? [
+        ...runs.map(id => `  ${subject(theme, known.get(id), id)}`),
+        ...unreadable.map(entry => `  ${theme.fg('error', '✗')} ${theme.fg('muted', String(entry.id ?? '').slice(0, 8))}  ${theme.fg('dim', cause(text(entry.error) ?? ''))}`),
+      ]
+    : []
+  const hint = options.expanded ? '' : theme.fg('dim', `${options.keyText(EXPAND)} per i dettagli`)
+  return new PanelRow(callLine(theme, 'recovery', theme.fg('muted', summary)), hint, lines, theme)
 }
