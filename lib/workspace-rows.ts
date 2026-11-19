@@ -1,7 +1,8 @@
-// Transcript rows for dev's workspace messages, drawn from `details` only, never from
-// model-visible content: `/workspace` answers and sweep receipts (`dev/workspace`), receipts
+// Transcript rows for dev's workspace messages, drawn from `details`: `/workspace` answers,
+// continued tasks and sweep receipts (`dev/workspace`), receipts
 // that changed nothing (`dev/workspace-receipt` entries), admissions refused for review
-// (`dev/workspace-refusal` entries) and switches (`dev/workspace-handoff`).
+// (`dev/workspace-refusal` entries) and switches (`dev/workspace-handoff`). A `/workspace`
+// answer without `details` is a sentence for the user; it is drawn whole under the title.
 // A workspace is named by its short id, and a managed worktree by `worktree <id>` instead of
 // its long path; a listed workspace also shows its head, the branch checked out there or the
 // commit when detached. ctrl+o adds paths, reasons, next actions and the rows a collapsed
@@ -10,7 +11,7 @@ import { homedir } from 'node:os'
 import { basename } from 'node:path'
 import type { EntryRenderer, MessageRenderer, Theme, ThemeColor } from '@earendil-works/pi-coding-agent'
 import { Box, type Component, sliceByColumn, Text, truncateToWidth, visibleWidth, wrapTextWithAnsi } from '@earendil-works/pi-tui'
-import { cause, hinted, oneLine, panel, plainDeep } from './header.ts'
+import { cause, hinted, oneLine, panel, plain, plainDeep } from './header.ts'
 
 type Fields = Record<string, unknown>
 const isObject = (value: unknown): value is Fields =>
@@ -252,9 +253,11 @@ function sweepLines(theme: Theme, receipt: Fields, expanded: boolean, hints: Hin
         : [],
   }))
   const moment = MOMENTS[String(receipt.moment)]
-  const summary = [...(moment === undefined ? [] : [moment]), counts(all)].join(' · ')
+  // A check that freed nothing says so first: kept and skipped rows are not cleanup.
+  const nothing = all.some(row => row.changed) ? [] : ['nothing removed']
+  const summary = [...(moment === undefined ? [] : [moment]), ...nothing, counts(all)].join(' · ')
   const hint = shown.length < all.length || all.some(row => row.reason !== undefined) ? hintOf(expanded, hints) : ''
-  return [header(theme, 'automatic cleanup', theme.fg('muted', summary), hint), ...table(shown)]
+  return [header(theme, 'checkout cleanup', theme.fg('muted', summary), hint), ...table(shown)]
 }
 
 function viewRow(theme: Theme, view: Fields, expanded: boolean, current: unknown): Row {
@@ -372,9 +375,44 @@ const rows = (lines: readonly Line[], expanded: boolean, theme: Theme): Componen
 // open a row of its own.
 const facts = (value: unknown): unknown => plainDeep(value, oneLine)
 
+// Continuing a paused task is one row, as a switch is: the checkout, its head and the changed
+// files earlier work left; ctrl+o adds the task and that its earlier messages are not here.
+function joinLines(theme: Theme, details: Fields, expanded: boolean, hints: Hints): Line[] {
+  const path = text(details.path)
+  const worktree = path !== undefined && basename(path) === details.workspaceId ? path : undefined
+  const where = place(theme, { workspaceId: details.workspaceId, path, origin: worktree === undefined ? undefined : 'managed' })
+  const branch = head(theme, details.head)
+  const changed = typeof details.changedFiles === 'number' && details.changedFiles > 0 ? details.changedFiles : 0
+  const files = changed === 0 ? '' : theme.fg('muted', ` · ${changed} changed ${changed === 1 ? 'file' : 'files'}`)
+  const more: Line[] = [
+    ...(worktree === undefined ? [] : [labelled(theme, 'path', { text: shortPath(worktree), color: 'muted', path: true })]),
+    ...(typeof details.taskId === 'string' ? [labelled(theme, 'task', { text: details.taskId, color: 'muted' })] : []),
+    labelled(theme, 'history', { text: 'earlier messages are not in this conversation', color: 'muted' }),
+  ]
+  return [
+    header(theme, 'workspace continued', [where, branch].filter(cell => cell !== '').join(GAP) + files, hintOf(expanded, hints)),
+    ...(expanded ? more : []),
+  ]
+}
+
+const contentText = (content: unknown): string =>
+  typeof content === 'string'
+    ? content
+    : objects(content)
+        .flatMap(part => (part.type === 'text' && typeof part.text === 'string' ? [part.text] : []))
+        .join('\n')
+
+// An answer is short and states what happened and what to do next, so it is never cut.
+function answerLines(theme: Theme, content: unknown): Line[] {
+  const lines = plain(contentText(content)).split('\n').map(line => line.trim()).filter(line => line !== '')
+  if (lines.length === 0) return []
+  return [header(theme, 'workspace', '', ''), ...lines.map((line): Hanging => ({ lead: INDENT, text: oneLine(line), color: 'muted' }))]
+}
+
 export const workspaceMessageRenderer: MessageRenderer = (message, options, theme) => {
   const details = facts(message.details)
-  if (!isObject(details)) return undefined
+  if (!isObject(details)) return rows(answerLines(theme, message.content), true, theme)
+  if (details.kind === 'join') return rows(joinLines(theme, details, options.expanded, options), options.expanded, theme)
   if (details.kind === 'sweep' && isObject(details.receipt))
     return rows(sweepLines(theme, details.receipt, options.expanded, options), options.expanded, theme)
   return rows(reportLines(theme, details, options.expanded, options), options.expanded, theme)
