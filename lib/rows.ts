@@ -216,8 +216,8 @@ function resultLines(args: Fields, details: Fields, expanded: boolean, theme: Th
         lines.push(`  ${glyph(theme, statusOf(record.status))} ${subject(theme, known.get(String(record.id)) ?? { role: roleOf(record), taskId: text(record.taskId) ?? '' }, record.id)}`)
     return lines
   }
-  if (details.kind === 'inspection' && isObject(details.inspection)) {
-    const { inspection } = details
+  if (details.kind === 'inspection' && isObject(details.inspection) && isObject(details.inspection.run)) {
+    const inspection = details.inspection.run
     const id = text(inspection.id)
     if (id !== undefined && !known.has(id)) remember(id, { role: roleOf(inspection), taskId: text(inspection.taskId) ?? '' })
     const lines = [runState(theme, inspection)]
@@ -550,7 +550,7 @@ export const inspectionRenderer: MessageRenderer = (message, options, theme) => 
   const details = plainDeep(message.details)
   const action = isObject(details) ? COMMAND_ACTIONS[String(details.kind)] : undefined
   if (!isObject(details) || action === undefined) return undefined
-  const subjectOf = details.kind === 'inspection' && isObject(details.inspection) ? details.inspection : details.kind === 'run' && isObject(details.run) ? details.run : undefined
+  const subjectOf = details.kind === 'inspection' && isObject(details.inspection) && isObject(details.inspection.run) ? details.inspection.run : details.kind === 'run' && isObject(details.run) ? details.run : undefined
   const args: Fields = { action, ...(subjectOf === undefined ? {} : { id: subjectOf.id }) }
   const lines = resultLines(args, details, options.expanded, theme, options, {})
   const id = text(args.id)
