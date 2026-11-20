@@ -150,7 +150,7 @@ const USE_STAGES: Record<string, string> = {
   'launch-intent': 'launch-planned',
   spawned: 'starting',
   started: 'running',
-  observed: 'running',
+  observed: 'observed',
   quiescent: 'ended',
 }
 const PENDING_KINDS: Record<string, string> = { handoff: 'switch', allocation: 'create' }
