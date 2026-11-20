@@ -1,7 +1,7 @@
 // Transcript rows for dev's workspace messages, drawn from `details`: `/workspace` answers,
 // continued tasks and sweep receipts (`dev/workspace`), receipts
 // that changed nothing (`dev/workspace-receipt` entries), admissions refused for review
-// (`dev/workspace-refusal` entries) and switches (`dev/workspace-handoff`). A `/workspace`
+// (`dev/workspace-refusal` entries) and switches (`dev/workspace-switch`). A `/workspace`
 // answer without `details` is a sentence for the user; it is drawn whole under the title.
 // A workspace is named by its short id, and a managed worktree by `worktree <id>` instead of
 // its long path; a listed workspace also shows its head, the branch checked out there or the

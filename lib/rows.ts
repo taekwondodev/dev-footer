@@ -1,4 +1,4 @@
-// Transcript rows for dev's `work` calls and its `dev/work-outcome`, `dev/work-quiet`,
+// Transcript rows for dev's `work` calls and its `dev/work-result`, `dev/work-quiet`,
 // `dev/work-inspection` and `dev/work-recovery` messages, drawn from the call arguments and
 // `details` only, never from model-visible content. A delegation is one static launch row; an
 // outcome is one block per child with its tool trail and answer on ctrl+o; other actions,
